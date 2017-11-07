@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v2"
@@ -96,8 +97,10 @@ func getString(element interface{}) string {
 	return ""
 }
 func getNumber(element interface{}) int {
-	retString, ok := element.(int)
-	if ok == true {
+
+	s := fmt.Sprintf("%v", element)
+	retString, err := strconv.Atoi(s)
+	if err == nil {
 		return retString
 	}
 	return 0

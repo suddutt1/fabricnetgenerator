@@ -136,10 +136,16 @@ func BuildPeerImage(cryptoBasePath, peerId, domainName, mspID, couchID, ordererF
 	peerEnvironment := make([]string, 0)
 	peerEnvironment = append(peerEnvironment, "CORE_PEER_ID="+peerFQDN)
 	peerEnvironment = append(peerEnvironment, "CORE_PEER_ADDRESS="+peerFQDN+":7051")
+	peerEnvironment = append(peerEnvironment, "CORE_PEER_CHAINCODELISTENADDRESS="+peerFQDN+":7052")
 	peerEnvironment = append(peerEnvironment, "CORE_PEER_GOSSIP_EXTERNALENDPOINT="+peerFQDN+":7051")
 	peerEnvironment = append(peerEnvironment, "CORE_PEER_LOCALMSPID="+mspID)
 	peerEnvironment = append(peerEnvironment, "CORE_LEDGER_STATE_STATEDATABASE=CouchDB")
 	peerEnvironment = append(peerEnvironment, "CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS="+couchID+":5984")
+	if peerId == "peer0" {
+		peerEnvironment = append(peerEnvironment, "CORE_PEER_GOSSIP_BOOTSTRAP="+peerFQDN+":7051")
+	} else {
+		peerEnvironment = append(peerEnvironment, "CORE_PEER_GOSSIP_BOOTSTRAP=peer0."+domainName+":7051")
+	}
 	vols := make([]string, 0)
 	vols = append(vols, "/var/run/:/host/var/run/")
 	vols = append(vols, cryptoBasePath+"/crypto-config/peerOrganizations/"+domainName+"/peers/"+peerFQDN+"/msp:/etc/hyperledger/fabric/msp")

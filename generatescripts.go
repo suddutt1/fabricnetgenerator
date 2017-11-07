@@ -14,17 +14,18 @@ const _SetPeerTemplate = `
 export ORDERER_CA=/opt/ws/crypto-config/ordererOrganizations/{{.orderers.domain}}/msp/tlscacerts/tlsca.{{.orderers.domain}}-cert.pem
 {{$primechannel := (index .channels 0).channelName }}
 export CHANNEL_NAME="{{print $primechannel "channel" | ToLower}}"
-if [ $# -eq 0 ];then
-	echo "Usage : . setpeer.sh {{range .orgs}}{{.name}}|{{end}}"
+if [ $# -lt 2 ];then
+	echo "Usage : . setpeer.sh {{range .orgs}}{{.name}}|{{end}} <peerid>"
 fi
+export peerId=$2
 {{range .orgs}}
 if [[ $1 = "{{.name}}" ]];then
-	echo "Setting to organization {{.name}} "
-	export CORE_PEER_ADDRESS=peer0.{{.domain}}:7051
+	echo "Setting to organization {{.name}} peer "$peerId
+	export CORE_PEER_ADDRESS=$peerId.{{.domain}}:7051
 	export CORE_PEER_LOCALMSPID={{.mspID}}
-	export CORE_PEER_TLS_CERT_FILE=/opt/ws/crypto-config/peerOrganizations/{{.domain}}/peers/peer0.{{.domain}}/tls/server.crt
-	export CORE_PEER_TLS_KEY_FILE=/opt/ws/crypto-config/peerOrganizations/{{.domain}}/peers/peer0.{{.domain}}/tls/server.key
-	export CORE_PEER_TLS_ROOTCERT_FILE=/opt/ws/crypto-config/peerOrganizations/{{.domain}}/peers/peer0.{{.domain}}/tls/ca.crt
+	export CORE_PEER_TLS_CERT_FILE=/opt/ws/crypto-config/peerOrganizations/{{.domain}}/peers/$peerId.{{.domain}}/tls/server.crt
+	export CORE_PEER_TLS_KEY_FILE=/opt/ws/crypto-config/peerOrganizations/{{.domain}}/peers/$peerId.{{.domain}}/tls/server.key
+	export CORE_PEER_TLS_ROOTCERT_FILE=/opt/ws/crypto-config/peerOrganizations/{{.domain}}/peers/$peerId.{{.domain}}/tls/ca.crt
 	export CORE_PEER_MSPCONFIGPATH=/opt/ws/crypto-config/peerOrganizations/{{.domain}}/users/Admin@{{.domain}}/msp
 fi
 {{end}}
@@ -68,13 +69,14 @@ cd $PWD
 const _BuildChannelScript = `
 #!/bin/bash -e
 {{$firstOrg := (index .orgs 0).name}}
-. setpeer.sh {{$firstOrg}}
+. setpeer.sh {{$firstOrg}} peer0
 {{ $channelId := (index .channels 0).channelName | ToLower}}
 peer channel create -o {{ .orderers.ordererHostname}}.{{.orderers.domain}}:7050 -c $CHANNEL_NAME -f ./{{print $channelId "channel.tx"}} --tls true --cafile $ORDERER_CA 
-{{ range .orgs}}
-. setpeer.sh {{.name}}
+{{ range $org := .orgs}}
+{{ range $peerId := $org.peerNames}}
+. setpeer.sh {{$org.name}} {{$peerId}}
 peer channel join -b $CHANNEL_NAME.block
-
+{{end}}
 {{end}}
 `
 const _CleanUp = `
@@ -85,6 +87,9 @@ rm -rf crypto-config
 rm *.block
 rm *.tx
 rm generateartifacts.sh
+rm setenv.sh
+rm setpeer.sh
+rm buildandjoinchannel.sh
 `
 const _SetEnv = `
 #!/bin/bash
@@ -198,6 +203,17 @@ func GenerateBuildAndJoinChannelScript(config []byte, filename string) bool {
 	}
 	dataMapContainer := make(map[string]interface{})
 	json.Unmarshal(config, &dataMapContainer)
+	orgs, _ := dataMapContainer["orgs"].([]interface{})
+	for _, org := range orgs {
+		orgConfig := getMap(org)
+		peerCount := getNumber(orgConfig["peerCount"])
+		peerNames := make([]string, 0)
+		fmt.Printf(" Peer count %d\n", peerCount)
+		for index := 0; index < peerCount; index++ {
+			peerNames = append(peerNames, fmt.Sprintf("peer%d", index))
+		}
+		orgConfig["peerNames"] = peerNames
+	}
 	var outputBytes bytes.Buffer
 	err = tmpl.Execute(&outputBytes, dataMapContainer)
 	if err != nil {
