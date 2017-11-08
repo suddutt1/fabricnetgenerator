@@ -66,6 +66,58 @@ generateArtifacts
 cd $PWD
 
 `
+
+const _GenerateArtifactsTemplateWithCA = `
+#!/bin/bash -e
+IMAGE_TAG="$(uname -m)-1.0.0"
+export IMAGE_TAG
+export PWD={{ "pwd" | ToCMDString}}
+
+export FABRIC_CFG_PATH=$PWD
+export ARCH=$(uname -s)
+export CRYPTOGEN=$PWD/bin/cryptogen
+export CONFIGTXGEN=$PWD/bin/configtxgen
+
+function generateArtifacts() {
+	
+	echo " *********** Generating artifacts ************ "
+	echo " *********** Deleting old certificates ******* "
+	
+        rm -rf ./crypto-config
+	
+        echo " ************ Generating certificates ********* "
+	
+        $CRYPTOGEN generate --config=$FABRIC_CFG_PATH/crypto-config.yaml
+        
+        echo " ************ Generating tx files ************ "
+	
+		$CONFIGTXGEN -profile OrdererGenesis -outputBlock ./genesis.block
+		{{range .channels}}{{$chName := .channelName }}{{$channelId:= $chName | ToLower }}
+        $CONFIGTXGEN -profile {{print $chName "Channel"}} -outputCreateChannelTx ./{{print $channelId "channel.tx" }} -channelID {{ print $channelId "channel"}}
+		{{end}}
+
+}
+function generateDockerComposeFile(){
+	OPTS="-i"
+	if [ "$ARCH" = "Darwin" ]; then
+		OPTS="-it"
+	fi
+	cp  docker-compose-template.yaml  docker-compose.yaml
+	{{ range .orgs}}
+	{{$orgName :=.name | ToUpper }}
+	cd  crypto-config/peerOrganizations/{{.domain}}/ca
+	PRIV_KEY=$(ls *_sk)
+	cd ../../../../
+	sed $OPTS "s/{{$orgName}}_PRIVATE_KEY/${PRIV_KEY}/g"  docker-compose.yaml
+	{{end}}
+}
+generateArtifacts 
+cd $PWD
+generateDockerComposeFile
+cd $PWD
+
+`
+
 const _BuildChannelScript = `
 #!/bin/bash -e
 {{$firstOrg := (index .orgs 0).name}}
@@ -147,13 +199,17 @@ func GenerateOtherScripts(path string) bool {
 
 	return true
 }
-func GenerateGenerateArtifactsScript(config []byte, filename string) bool {
+func GenerateGenerateArtifactsScript(config []byte, filename string, addCA bool) bool {
 	funcMap := template.FuncMap{
 		"ToCMDString": ToCMDString,
 		"ToLower":     strings.ToLower,
+		"ToUpper":     strings.ToUpper,
 	}
-
-	tmpl, err := template.New("generateArtifacts").Funcs(funcMap).Parse(_GenerateArtifactsTemplate)
+	templateToUse := _GenerateArtifactsTemplate
+	if addCA == true {
+		templateToUse = _GenerateArtifactsTemplateWithCA
+	}
+	tmpl, err := template.New("generateArtifacts").Funcs(funcMap).Parse(templateToUse)
 	if err != nil {
 		fmt.Printf("Error in reading template %v\n", err)
 		return false
@@ -163,7 +219,7 @@ func GenerateGenerateArtifactsScript(config []byte, filename string) bool {
 	var outputBytes bytes.Buffer
 	err = tmpl.Execute(&outputBytes, dataMapContainer)
 	if err != nil {
-		fmt.Printf("Error in generating the setpeer.sh file %v\n", err)
+		fmt.Printf("Error in generating the generateArtifacts file %v\n", err)
 		return false
 	}
 	ioutil.WriteFile(filename, outputBytes.Bytes(), 0777)

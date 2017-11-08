@@ -10,7 +10,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func GenerateCrytoConfig(config []byte, filePath string) bool {
+func GenerateCrytoConfig(config []byte, filePath string, useCA bool) bool {
 	isSuccess := true
 	rootConfig := make(map[string]interface{})
 	err := json.Unmarshal(config, &rootConfig)
@@ -36,7 +36,7 @@ func GenerateCrytoConfig(config []byte, filePath string) bool {
 	}
 	peerOrgs := make([]map[string]interface{}, 0)
 	for _, orgConfig := range orgs {
-		peerOrgs = append(peerOrgs, buildOrgConfig(getMap(orgConfig)))
+		peerOrgs = append(peerOrgs, buildOrgConfig(getMap(orgConfig), useCA))
 	}
 	cryptoConfig["PeerOrgs"] = peerOrgs
 	outBytes, _ := yaml.Marshal(cryptoConfig)
@@ -66,10 +66,16 @@ func buildOrderConfig(ordererConfig map[string]interface{}) map[string]interface
 	outputStructure["Specs"] = specs
 	return outputStructure
 }
-func buildOrgConfig(orgConfig map[string]interface{}) map[string]interface{} {
+func buildOrgConfig(orgConfig map[string]interface{}, useCA bool) map[string]interface{} {
 	outputStructure := make(map[string]interface{})
 	outputStructure["Name"] = getString(orgConfig["name"])
 	outputStructure["Domain"] = getString(orgConfig["domain"])
+	if useCA == true {
+		caTemplate := make(map[string]string)
+		caTemplate["Hostname"] = "ca"
+		outputStructure["CA"] = caTemplate
+	}
+
 	template := make(map[string]interface{})
 	template["Count"] = orgConfig["peerCount"]
 	//Assuing one as of now

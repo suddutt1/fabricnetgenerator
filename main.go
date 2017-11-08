@@ -7,7 +7,13 @@ import (
 )
 
 func main() {
+	var addCA bool
+	addCA = false
 	args := os.Args[1:]
+	if len(args) == 0 {
+		fmt.Printf("Usage : fabricnetgen <network json file > [--addCA]\n")
+		return
+	}
 	fmt.Printf("Starting the application.... \n")
 	fmt.Printf("Reading the input .... %v\n", args[0])
 	configBytes, err := ioutil.ReadFile(args[0])
@@ -15,17 +21,20 @@ func main() {
 		fmt.Errorf("Error in reading input json")
 		return
 	}
+	if len(args) > 1 && args[1] == "--addCA" {
+		addCA = true
+	}
 	if !GenerateConfigTxGen(configBytes, "./configtx.yaml") {
 		fmt.Errorf("Error in generation of configtx.yaml")
 	}
 	fmt.Println("configtx.yaml generated ...")
-	if !GenerateCrytoConfig(configBytes, "./crypto-config.yaml") {
+	if !GenerateCrytoConfig(configBytes, "./crypto-config.yaml", addCA) {
 		fmt.Errorf("Error in generation of crypto-config.yaml")
 		return
 	}
 
 	fmt.Println("crypto-config.yaml generated....")
-	if !GenerateDockerFiles(configBytes, ".") {
+	if !GenerateDockerFiles(configBytes, ".", addCA) {
 		fmt.Errorf("Error in generating the docker files")
 	}
 	fmt.Println("Generated docker-compose.yaml ..")
@@ -34,7 +43,7 @@ func main() {
 		fmt.Errorf("Error in generating the setpeer.sh")
 	}
 	fmt.Println("generateartifacts.sh generation in progress ....")
-	if !GenerateGenerateArtifactsScript(configBytes, "./generateartifacts.sh") {
+	if !GenerateGenerateArtifactsScript(configBytes, "./generateartifacts.sh", addCA) {
 		fmt.Errorf("Error in generating the generateartifacts.sh")
 	}
 

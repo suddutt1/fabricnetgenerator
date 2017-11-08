@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 )
@@ -29,13 +30,14 @@ type Container struct {
 	Networks []string `yaml:"networks,omitempty"`
 }
 
-func GenerateDockerFiles(networkConfigByte []byte, dirpath string) bool {
+func GenerateDockerFiles(networkConfigByte []byte, dirpath string, addCA bool) bool {
 	networkConfig := make(map[string]interface{})
 	json.Unmarshal(networkConfigByte, &networkConfig)
 	orgConfigs, _ := networkConfig["orgs"].([]interface{})
 	couchCount := 0
 	portMap := generatePorts([]int{7051, 7053})
 	couchPortMap := generatePorts([]int{5984})
+	caPortMap := generatePorts([]int{7054})
 	var serviceConf ServiceConfig
 	serviceConf.Version = "2"
 	netWrk := make(map[string]interface{})
@@ -57,7 +59,10 @@ func GenerateDockerFiles(networkConfigByte []byte, dirpath string) bool {
 		peerCountFlt, _ := orgConfig["peerCount"].(float64)
 		peerCount := int(peerCountFlt)
 		fmt.Printf(" Peer count is %d \n ", peerCount)
-
+		if addCA == true {
+			caContainer := BuildCAImage(dirpath, getString(orgConfig["domain"]), getString(orgConfig["name"]), caPortMap[index])
+			containers[caContainer.ContainerName] = caContainer
+		}
 		for peerIndex := 0; peerIndex < peerCount; peerIndex++ {
 			peerID := fmt.Sprintf("peer%d", peerIndex)
 			couchID := fmt.Sprintf("couch%d", couchCount)
@@ -75,10 +80,13 @@ func GenerateDockerFiles(networkConfigByte []byte, dirpath string) bool {
 	containers[cli.ContainerName] = cli
 	serviceConf.Services = containers
 	serviceBytes, _ := yaml.Marshal(serviceConf)
-	ioutil.WriteFile(dirpath+"/docker-compose.yaml", serviceBytes, 0666)
-
+	if addCA == true {
+		ioutil.WriteFile(dirpath+"/docker-compose-template.yaml", serviceBytes, 0666)
+	} else {
+		ioutil.WriteFile(dirpath+"/docker-compose.yaml", serviceBytes, 0666)
+	}
 	//generate the base.yaml
-	outBytes, _ := yaml.Marshal(BuildBaseImage())
+	outBytes, _ := yaml.Marshal(BuildBaseImage(addCA))
 	ioutil.WriteFile(dirpath+"/base.yaml", outBytes, 0666)
 
 	return true
@@ -166,6 +174,33 @@ func BuildPeerImage(cryptoBasePath, peerId, domainName, mspID, couchID, ordererF
 	container.Extends = extnds
 	return container
 }
+func BuildCAImage(cryptoBasePath, domainName, orgname string, ports []string) Container {
+
+	extnds := make(map[string]string)
+	extnds["file"] = "base.yaml"
+	extnds["service"] = "ca"
+	peerFQDN := "ca." + domainName
+
+	peerEnvironment := make([]string, 0)
+	peerEnvironment = append(peerEnvironment, "FABRIC_CA_SERVER_CA_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca."+domainName+"-cert.pem")
+	peerEnvironment = append(peerEnvironment, "FABRIC_CA_SERVER_CA_KEYFILE=/etc/hyperledger/fabric-ca-server-config/"+strings.ToUpper(orgname)+"_PRIVATE_KEY")
+	peerEnvironment = append(peerEnvironment, "FABRIC_CA_SERVER_TLS_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca."+domainName+"-cert.pem")
+	peerEnvironment = append(peerEnvironment, "FABRIC_CA_SERVER_TLS_KEYFILE=/etc/hyperledger/fabric-ca-server-config/"+strings.ToUpper(orgname)+"_PRIVATE_KEY")
+	vols := make([]string, 0)
+	vols = append(vols, cryptoBasePath+"/crypto-config/peerOrganizations/"+domainName+"/ca/"+":/etc/hyperledger/fabric-ca-server-config")
+
+	var networks = make([]string, 0)
+	networks = append(networks, "fabricnetwork")
+
+	var container Container
+	container.ContainerName = peerFQDN
+	container.Environment = peerEnvironment
+	container.Volumns = vols
+	container.Networks = networks
+	container.Ports = ports
+	container.Extends = extnds
+	return container
+}
 func BuildCouchDB(couchID string, ports []string) Container {
 	var couchContainer Container
 	couchContainer.ContainerName = couchID
@@ -181,7 +216,7 @@ func BuildCouchDB(couchID string, ports []string) Container {
 	couchContainer.Ports = ports
 	return couchContainer
 }
-func BuildBaseImage() ServiceConfig {
+func BuildBaseImage(addCA bool) ServiceConfig {
 	var peerbase Container
 	peerEnvironment := make([]string, 0)
 	peerEnvironment = append(peerEnvironment, "CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock")
@@ -228,6 +263,17 @@ func BuildBaseImage() ServiceConfig {
 	var couchDB Container
 	couchDB.Image = "hyperledger/fabric-couchdb:${IMAGE_TAG}"
 	config["couchdb"] = couchDB
+
+	if addCA == true {
+		var ca Container
+		ca.Image = "hyperledger/fabric-ca:${IMAGE_TAG}"
+		caEnvironment := make([]string, 0)
+		caEnvironment = append(caEnvironment, "FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server")
+		caEnvironment = append(caEnvironment, "FABRIC_CA_SERVER_TLS_ENABLED=true")
+		ca.Environment = caEnvironment
+		ca.Command = "sh -c 'fabric-ca-server start -b admin:adminpw -d'"
+		config["ca"] = ca
+	}
 	var serviceConfig ServiceConfig
 	serviceConfig.Version = "2"
 	serviceConfig.Services = config
