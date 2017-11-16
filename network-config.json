@@ -32,5 +32,7 @@
     "channels" :[
                     {"channelName":"AirWater","orgs":["Air","Water"] },
                     {"channelName":"All","orgs":["Air","Water","Soil"] }
-                ]
+                ],
+    "chaincodes":[{"channelName":"AirWater","ccid":"bt","version":"1.0","src":"github.com/bt","participants":["Air","Water"]}]            
+                
 }

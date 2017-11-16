@@ -49,10 +49,14 @@ func main() {
 
 	fmt.Println("buildandjoinchannel.sh generation in progress ....")
 	if !GenerateBuildAndJoinChannelScript(configBytes, "./buildandjoinchannel.sh") {
-		fmt.Errorf("Error in generating the buildandjoinchannel.sh")
+		fmt.Println("Error in generating the buildandjoinchannel.sh")
 	}
 	fmt.Println("Generating misc scripts ....")
 	if !GenerateOtherScripts("./") {
-		fmt.Errorf("Error in generating misc scripts")
+		fmt.Println("Error in generating misc scripts")
+	}
+	fmt.Println("Generating chaincode related scripts ....")
+	if !GenerateChainCodeScripts(configBytes, "./") {
+		fmt.Println("Error in generating chain code related scripts")
 	}
 }
