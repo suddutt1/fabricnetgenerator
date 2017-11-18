@@ -142,6 +142,9 @@ rm generateartifacts.sh
 rm setenv.sh
 rm setpeer.sh
 rm buildandjoinchannel.sh
+rm *_install.sh
+rm *_update.sh
+
 `
 const _SetEnv = `
 #!/bin/bash
