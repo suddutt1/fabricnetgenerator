@@ -30,11 +30,10 @@ Hyperledger Fabric Network Generator
     ```
 
 ## TODO
-1. Need to document the steps 
-2. Need to add some command line option to generate input network json file
-3. Add instructions at the end of generation 
+1. Need to document the output
+2. Add instructions at the end of generation on the console
 
-## Tool download
+## Tool download ( Not required separately anymore)
 
 ```sh
 export VERSION=1.0.4
