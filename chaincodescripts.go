@@ -33,9 +33,9 @@ func GenerateChainCodeScripts(config []byte, path string) bool {
 		fmt.Println("No chain codes defined")
 		return false
 	}
-	shFile, _ := os.Create(path + "installcc.sh")
-	shFile.WriteString("#!/bin/bash\n")
+
 	for _, ccInfo := range chainCodes {
+
 		chainCodeConfig := getMap(ccInfo)
 		ccID := getString(chainCodeConfig["ccid"])
 		version := getString(chainCodeConfig["version"])
@@ -46,25 +46,40 @@ func GenerateChainCodeScripts(config []byte, path string) bool {
 			fmt.Printf("No participants \n")
 			return false
 		}
+		shFileInstall, _ := os.Create(path + ccID + "_install.sh")
+		shFileInstall.WriteString("#!/bin/bash\n")
+		shFileUpdateCC, _ := os.Create(path + ccID + "_update.sh")
+		shFileUpdateCC.WriteString("#!/bin/bash\n")
+		shFileUpdateCC.WriteString("if [[ ! -z \"$1\" ]]; then  \n")
 		policy := ""
 		for _, participant := range participants {
 			peerCount := peerCountMap[getString(participant)]
 			for index := 0; index < peerCount; index++ {
 				lineToWrite := fmt.Sprintf(". setpeer.sh %s peer%d \n", participant, index)
-				shFile.WriteString(lineToWrite)
+				shFileInstall.WriteString(lineToWrite)
+				shFileUpdateCC.WriteString("\t" + lineToWrite)
 				exeCommand := fmt.Sprintf("peer chaincode install -n %s -v %s -p %s\n", ccID, version, src)
-				shFile.WriteString(exeCommand)
+				shFileInstall.WriteString(exeCommand)
+				exeUpdCommand := fmt.Sprintf("peer chaincode install -n %s -v %s -p %s\n", ccID, "$1", src)
+				shFileUpdateCC.WriteString("\t" + exeUpdCommand)
 			}
 			policy = policy + ",'" + (mspMap[getString(participant)]) + ".member'"
 		}
 		runes := []rune(policy)
 		finalPolicy := string(runes[1:])
 		instCommand := fmt.Sprintf("peer chaincode instantiate -o %s:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C %s -n %s -v %s -c '{\"Args\":[\"init\",\"\"]}' -P \" OR( %s ) \" \n", ordererFDQN, channelName, ccID, version, finalPolicy)
-		shFile.WriteString(instCommand)
+		shFileInstall.WriteString(instCommand)
+		updateCommand := fmt.Sprintf("\tpeer chaincode upgrade -o %s:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C %s -n %s -v %s -c '{\"Args\":[\"init\",\"\"]}' -P \" OR( %s ) \" \n", ordererFDQN, channelName, ccID, "$1", finalPolicy)
+		shFileUpdateCC.WriteString(updateCommand)
+		shFileUpdateCC.WriteString("else\n")
+		shFileUpdateCC.WriteString("\techo \". " + ccID + "_updchain.sh  <Version Number>\" \n")
+		shFileUpdateCC.WriteString("fi\n")
+		shFileInstall.Close()
+		shFileUpdateCC.Close()
 	}
 
 	//instCommand =
 	//     peer chaincode instantiate -o orderer.kg.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n $1 -v $2 -c '{"Args":["init",""]}' -P "OR ('RawMaterialDepartmentMSP.member','ManufacturingDepartmentMSP.member','DistributionCenterMSP.member','DistributionCenterMSP.member')"
-	shFile.Close()
+
 	return true
 }
