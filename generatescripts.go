@@ -155,6 +155,22 @@ const _DOTENV = `
 COMPOSE_PROJECT_NAME=bc
 
 `
+const _DOWNLOAD_SCRIPTS = `
+#!/bin/bash
+
+export VERSION=1.0.0
+export ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')-$(uname -m | sed 's/x86_64/amd64/g')" | awk '{print tolower($0)}')
+#Set MARCH variable i.e ppc64le,s390x,x86_64,i386
+MARCH="x86_64"
+
+
+: ${CA_TAG:="$MARCH-$VERSION"}
+: ${FABRIC_TAG:="$MARCH-$VERSION"}
+
+echo "===> Downloading platform binaries"
+curl https://nexus.hyperledger.org/content/repositories/releases/org/hyperledger/fabric/hyperledger-fabric/${ARCH}-${VERSION}/hyperledger-fabric-${ARCH}-${VERSION}.tar.gz | tar xz
+
+`
 
 func ToCMDString(input string) string {
 	return "`" + input + "`"
@@ -193,12 +209,27 @@ func GenerateOtherScripts(path string) bool {
 	}
 
 	var outputBytes3 bytes.Buffer
+
 	err = tmpl.Execute(&outputBytes3, dataMapContainer)
 	if err != nil {
 		fmt.Printf("Error in generating the cleanup.sh file %v\n", err)
 		return false
 	}
 	ioutil.WriteFile(path+"cleanup.sh", outputBytes3.Bytes(), 0777)
+
+	tmpl, err = template.New("download").Parse(_DOWNLOAD_SCRIPTS)
+	if err != nil {
+		fmt.Printf("Error in reading template %v\n", err)
+		return false
+	}
+
+	var outputBytes4 bytes.Buffer
+	err = tmpl.Execute(&outputBytes4, dataMapContainer)
+	if err != nil {
+		fmt.Printf("Error in generating the downloadbin.sh file %v\n", err)
+		return false
+	}
+	ioutil.WriteFile(path+"downloadbin.sh", outputBytes4.Bytes(), 0777)
 
 	return true
 }
