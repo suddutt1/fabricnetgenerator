@@ -7,6 +7,7 @@ Hyperledger Fabric Network Generator
 2. Build using 
     ```sh
     cd <path to source code directory>
+    go get gopkg.in/yaml.v2
     go build
     ```
 3. Install using  the following commands ( Make sure that GOBIN environment variable is set and your PATH contains GOBIN in it)
