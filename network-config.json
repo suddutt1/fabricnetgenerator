@@ -2,6 +2,7 @@
     "orderers":{
         "name" :"Orderer","mspID":"OrdererMSP","domain":"elements.net","ordererHostname":"orderer","SANS":"localhost"
     },
+    "addCA":"false",
     "orgs":[
         { 
             "name" :"Air",

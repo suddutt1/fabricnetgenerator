@@ -10,7 +10,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-func GenerateCrytoConfig(config []byte, filePath string, useCA bool) bool {
+func GenerateCrytoConfig(config []byte, filePath string) bool {
+	useCA := false
 	isSuccess := true
 	rootConfig := make(map[string]interface{})
 	err := json.Unmarshal(config, &rootConfig)
@@ -24,7 +25,7 @@ func GenerateCrytoConfig(config []byte, filePath string, useCA bool) bool {
 		fmt.Println("No orderer specified")
 		return false
 	}
-
+	useCA = getBoolean(rootConfig["addCA"])
 	cryptoConfig := make(map[string]interface{})
 	orderOrgs := make([]map[string]interface{}, 0)
 	orderOrgs = append(orderOrgs, buildOrderConfig(ordererConfig))
@@ -110,4 +111,14 @@ func getNumber(element interface{}) int {
 		return retString
 	}
 	return 0
+}
+func getBoolean(element interface{}) bool {
+	retString, ok := element.(string)
+	if ok == true {
+		retBool, inValid := strconv.ParseBool(retString)
+		if inValid == nil {
+			return retBool
+		}
+	}
+	return false
 }

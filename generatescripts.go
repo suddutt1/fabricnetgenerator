@@ -233,12 +233,15 @@ func GenerateOtherScripts(path string) bool {
 
 	return true
 }
-func GenerateGenerateArtifactsScript(config []byte, filename string, addCA bool) bool {
+func GenerateGenerateArtifactsScript(configBytes []byte, filename string) bool {
 	funcMap := template.FuncMap{
 		"ToCMDString": ToCMDString,
 		"ToLower":     strings.ToLower,
 		"ToUpper":     strings.ToUpper,
 	}
+	dataMapContainer := make(map[string]interface{})
+	json.Unmarshal(configBytes, &dataMapContainer)
+	addCA := getBoolean(dataMapContainer["addCA"])
 	templateToUse := _GenerateArtifactsTemplate
 	if addCA == true {
 		templateToUse = _GenerateArtifactsTemplateWithCA
@@ -248,8 +251,7 @@ func GenerateGenerateArtifactsScript(config []byte, filename string, addCA bool)
 		fmt.Printf("Error in reading template %v\n", err)
 		return false
 	}
-	dataMapContainer := make(map[string]interface{})
-	json.Unmarshal(config, &dataMapContainer)
+
 	var outputBytes bytes.Buffer
 	err = tmpl.Execute(&outputBytes, dataMapContainer)
 	if err != nil {

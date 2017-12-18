@@ -30,9 +30,11 @@ type Container struct {
 	Networks []string `yaml:"networks,omitempty"`
 }
 
-func GenerateDockerFiles(networkConfigByte []byte, dirpath string, addCA bool) bool {
+func GenerateDockerFiles(networkConfigByte []byte, dirpath string) bool {
+	var addCA = false
 	networkConfig := make(map[string]interface{})
 	json.Unmarshal(networkConfigByte, &networkConfig)
+	addCA = getBoolean(networkConfig["addCA"])
 	orgConfigs, _ := networkConfig["orgs"].([]interface{})
 	couchCount := 0
 	portMap := generatePorts([]int{7051, 7053})
@@ -86,7 +88,7 @@ func GenerateDockerFiles(networkConfigByte []byte, dirpath string, addCA bool) b
 		ioutil.WriteFile(dirpath+"/docker-compose.yaml", serviceBytes, 0666)
 	}
 	//generate the base.yaml
-	outBytes, _ := yaml.Marshal(BuildBaseImage(addCA))
+	outBytes, _ := yaml.Marshal(BuildBaseImage(addCA, getString(ordConfig["mspID"])))
 	ioutil.WriteFile(dirpath+"/base.yaml", outBytes, 0666)
 
 	return true
@@ -222,7 +224,7 @@ func BuildCouchDB(couchID string, ports []string) Container {
 	couchContainer.Ports = ports
 	return couchContainer
 }
-func BuildBaseImage(addCA bool) ServiceConfig {
+func BuildBaseImage(addCA bool, ordererMSP string) ServiceConfig {
 	var peerbase Container
 	peerEnvironment := make([]string, 0)
 	peerEnvironment = append(peerEnvironment, "CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock")
@@ -250,7 +252,7 @@ func BuildBaseImage(addCA bool) ServiceConfig {
 	ordererEnvironment = append(ordererEnvironment, "ORDERER_GENERAL_LISTENADDRESS=0.0.0.0")
 	ordererEnvironment = append(ordererEnvironment, "ORDERER_GENERAL_GENESISMETHOD=file")
 	ordererEnvironment = append(ordererEnvironment, "ORDERER_GENERAL_GENESISFILE=/var/hyperledger/orderer/genesis.block")
-	ordererEnvironment = append(ordererEnvironment, "ORDERER_GENERAL_LOCALMSPID=OrdererMSP")
+	ordererEnvironment = append(ordererEnvironment, "ORDERER_GENERAL_LOCALMSPID="+ordererMSP)
 	ordererEnvironment = append(ordererEnvironment, "ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp")
 	ordererEnvironment = append(ordererEnvironment, "ORDERER_GENERAL_TLS_ENABLED=true")
 	ordererEnvironment = append(ordererEnvironment, "ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key")
