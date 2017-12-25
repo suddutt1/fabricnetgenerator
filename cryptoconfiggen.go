@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v2"
 )
 
+//GenerateCrytoConfig generate the CryptoConfig file
 func GenerateCrytoConfig(config []byte, filePath string) bool {
 	useCA := false
 	isSuccess := true
@@ -19,13 +19,14 @@ func GenerateCrytoConfig(config []byte, filePath string) bool {
 		fmt.Printf("Error in parsing the config bytes %v", err)
 		return false
 	}
+	useCA = getBoolean(rootConfig["addCA"])
 	//Perform the orderer part
 	ordererConfig := getMap(rootConfig["orderers"])
 	if ordererConfig == nil {
 		fmt.Println("No orderer specified")
 		return false
 	}
-	useCA = getBoolean(rootConfig["addCA"])
+
 	cryptoConfig := make(map[string]interface{})
 	orderOrgs := make([]map[string]interface{}, 0)
 	orderOrgs = append(orderOrgs, buildOrderConfig(ordererConfig))
@@ -65,6 +66,14 @@ func buildOrderConfig(ordererConfig map[string]interface{}) map[string]interface
 	sansSpec["SANS"] = sansArray
 	specs = append(specs, sansSpec)
 	outputStructure["Specs"] = specs
+	if ifExists(ordererConfig, "haCount") && ifExists(ordererConfig, "type") {
+		if getString(ordererConfig["type"]) == "kafka" {
+			template := make(map[string]interface{})
+			template["Count"] = ordererConfig["haCount"]
+			outputStructure["Template"] = template
+		}
+	}
+
 	return outputStructure
 }
 func buildOrgConfig(orgConfig map[string]interface{}, useCA bool) map[string]interface{} {
@@ -88,37 +97,4 @@ func buildOrgConfig(orgConfig map[string]interface{}, useCA bool) map[string]int
 	users["Count"] = orgConfig["userCount"]
 	outputStructure["Users"] = users
 	return outputStructure
-}
-func getMap(element interface{}) map[string]interface{} {
-	retMap, ok := element.(map[string]interface{})
-	if ok == true {
-		return retMap
-	}
-	return nil
-}
-func getString(element interface{}) string {
-	retString, ok := element.(string)
-	if ok == true {
-		return retString
-	}
-	return ""
-}
-func getNumber(element interface{}) int {
-
-	s := fmt.Sprintf("%v", element)
-	retString, err := strconv.Atoi(s)
-	if err == nil {
-		return retString
-	}
-	return 0
-}
-func getBoolean(element interface{}) bool {
-	retString, ok := element.(string)
-	if ok == true {
-		retBool, inValid := strconv.ParseBool(retString)
-		if inValid == nil {
-			return retBool
-		}
-	}
-	return false
 }

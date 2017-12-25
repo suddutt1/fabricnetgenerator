@@ -16,6 +16,9 @@ func GenerateChainCodeScripts(config []byte, path string) bool {
 	peerCountMap := make(map[string]int)
 	ordererConfig := getMap(dataMapContainer["orderers"])
 	ordererFDQN := getString(ordererConfig["ordererHostname"]) + "." + getString(ordererConfig["domain"])
+	if ifExists(ordererConfig, "type") && ifExists(ordererConfig, "haCount") && getString(ordererConfig["type"]) == "kafka" {
+		ordererFDQN = getString(ordererConfig["ordererHostname"]) + "0." + getString(ordererConfig["domain"])
+	}
 	orgs, orgsExists := dataMapContainer["orgs"].([]interface{})
 	if !orgsExists {
 		fmt.Println("No organizations specified")
@@ -48,6 +51,7 @@ func GenerateChainCodeScripts(config []byte, path string) bool {
 		}
 		shFileInstall, _ := os.Create(path + ccID + "_install.sh")
 		shFileInstall.WriteString("#!/bin/bash\n")
+
 		shFileUpdateCC, _ := os.Create(path + ccID + "_update.sh")
 		shFileUpdateCC.WriteString("#!/bin/bash\n")
 		shFileUpdateCC.WriteString("if [[ ! -z \"$1\" ]]; then  \n")
@@ -56,8 +60,11 @@ func GenerateChainCodeScripts(config []byte, path string) bool {
 			peerCount := peerCountMap[getString(participant)]
 			for index := 0; index < peerCount; index++ {
 				lineToWrite := fmt.Sprintf(". setpeer.sh %s peer%d \n", participant, index)
+				setChannel := fmt.Sprintf("export CHANNEL_NAME=\"%s\"\n", channelName)
 				shFileInstall.WriteString(lineToWrite)
+				shFileInstall.WriteString(setChannel)
 				shFileUpdateCC.WriteString("\t" + lineToWrite)
+				shFileUpdateCC.WriteString(setChannel)
 				exeCommand := fmt.Sprintf("peer chaincode install -n %s -v %s -p %s\n", ccID, version, src)
 				shFileInstall.WriteString(exeCommand)
 				exeUpdCommand := fmt.Sprintf("peer chaincode install -n %s -v %s -p %s\n", ccID, "$1", src)

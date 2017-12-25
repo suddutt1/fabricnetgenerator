@@ -1,6 +1,6 @@
 {
     "orderers":{
-        "name" :"Orderer","mspID":"OrdererMSP","domain":"elements.net","ordererHostname":"orderer","SANS":"localhost"
+        "name" :"Orderer","mspID":"ElementsOrdererMSP","domain":"elements.net","ordererHostname":"eorderer","SANS":"localhost","type":"kafka","haCount":3
     },
     "addCA":"false",
     "orgs":[
@@ -9,7 +9,7 @@
             "domain":"air.net",
             "mspID":"AirMSP",
             "SANS":"localhost",
-            "peerCount":4,
+            "peerCount":2,
             "userCount":2
         },
         { 

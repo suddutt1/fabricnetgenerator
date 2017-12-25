@@ -17,6 +17,7 @@ type ServiceConfig struct {
 
 type Container struct {
 	Image         string            `yaml:"image,omitempty"`
+	Restart       string            `yaml:"restart,omitempty"`
 	ContainerName string            `yaml:"container_name,omitempty"`
 	TTY           bool              `yaml:"tty,omitempty"`
 	Extends       map[string]string `yaml:"extends,omitempty"`
@@ -31,15 +32,16 @@ type Container struct {
 }
 
 func GenerateDockerFiles(networkConfigByte []byte, dirpath string) bool {
-	var addCA = false
+	addCA := false
 	networkConfig := make(map[string]interface{})
 	json.Unmarshal(networkConfigByte, &networkConfig)
 	addCA = getBoolean(networkConfig["addCA"])
 	orgConfigs, _ := networkConfig["orgs"].([]interface{})
 	couchCount := 0
-	portMap := generatePorts([]int{7051, 7053})
+	peerPortMap := generatePorts([]int{7051, 7053})
 	couchPortMap := generatePorts([]int{5984})
 	caPortMap := generatePorts([]int{7054})
+	ordeerPortMap := generatePorts([]int{7050})
 	var serviceConf ServiceConfig
 	serviceConf.Version = "2"
 	netWrk := make(map[string]interface{})
@@ -49,11 +51,27 @@ func GenerateDockerFiles(networkConfigByte []byte, dirpath string) bool {
 	containers := make(map[string]interface{})
 	cliDependency := make([]string, 0)
 	//Add the orderer
-	ordConfigInt, _ := networkConfig["orderers"].(interface{})
-	ordConfig, _ := ordConfigInt.(map[string]interface{})
-	orderContainer := BuildOrderer(dirpath, getString(ordConfig["ordererHostname"]), getString(ordConfig["domain"]))
-	containers[orderContainer.ContainerName] = orderContainer
-	cliDependency = append(cliDependency, orderContainer.ContainerName)
+	ordConfigInput, _ := networkConfig["orderers"].(interface{})
+	ordConfig, _ := ordConfigInput.(map[string]interface{})
+	ordererContainerNames := make([]string, 0)
+	if ifExists(ordConfig, "type") && ifExists(ordConfig, "haCount") && getString(ordConfig["type"]) == "kafka" {
+		zooKeeprs := BuildZookeeprs(3, containers)
+		kafkas := BuildKafkas(4, containers, zooKeeprs)
+		ordererCount := getNumber(ordConfig["haCount"])
+		ordererHostName := getString(ordConfig["ordererHostname"])
+		ordererDomainName := getString(ordConfig["domain"])
+		for index := 0; index < ordererCount; index++ {
+			orderContainer := BuildOrderer(".", fmt.Sprintf("%s%d", ordererHostName, index), ordererDomainName, ordeerPortMap[index][0], kafkas)
+			containers[orderContainer.ContainerName] = orderContainer
+			cliDependency = append(cliDependency, orderContainer.ContainerName)
+			ordererContainerNames = append(ordererContainerNames, orderContainer.ContainerName)
+		}
+	} else {
+		orderContainer := BuildOrderer(".", getString(ordConfig["ordererHostname"]), getString(ordConfig["domain"]), "7050:7050", nil)
+		containers[orderContainer.ContainerName] = orderContainer
+		cliDependency = append(cliDependency, orderContainer.ContainerName)
+		ordererContainerNames = append(ordererContainerNames, orderContainer.ContainerName)
+	}
 	//Adding the peers and couchdb
 	for index, org := range orgConfigs {
 		orgConfig, _ := org.(map[string]interface{})
@@ -62,15 +80,15 @@ func GenerateDockerFiles(networkConfigByte []byte, dirpath string) bool {
 		peerCount := int(peerCountFlt)
 		fmt.Printf(" Peer count is %d \n ", peerCount)
 		if addCA == true {
-			caContainer := BuildCAImage(dirpath, getString(orgConfig["domain"]), getString(orgConfig["name"]), caPortMap[index])
+			caContainer := BuildCAImage(".", getString(orgConfig["domain"]), getString(orgConfig["name"]), caPortMap[index])
 			containers[caContainer.ContainerName] = caContainer
 		}
 		for peerIndex := 0; peerIndex < peerCount; peerIndex++ {
 			peerID := fmt.Sprintf("peer%d", peerIndex)
 			couchID := fmt.Sprintf("couch%d", couchCount)
-			ports := portMap[couchCount]
+			ports := peerPortMap[couchCount]
 			couchContainer := BuildCouchDB(couchID, couchPortMap[couchCount])
-			containerImage := BuildPeerImage(dirpath, peerID, getString(orgConfig["domain"]), getString(orgConfig["mspID"]), couchID, orderContainer.ContainerName, ports)
+			containerImage := BuildPeerImage(".", peerID, getString(orgConfig["domain"]), getString(orgConfig["mspID"]), couchID, ordererContainerNames, ports)
 			containers[couchContainer.ContainerName] = couchContainer
 			containers[containerImage.ContainerName] = containerImage
 			cliDependency = append(cliDependency, containerImage.ContainerName)
@@ -78,7 +96,7 @@ func GenerateDockerFiles(networkConfigByte []byte, dirpath string) bool {
 
 		}
 	}
-	cli := BuildCLI(dirpath, cliDependency)
+	cli := BuildCLI("./", cliDependency)
 	containers[cli.ContainerName] = cli
 	serviceConf.Services = containers
 	serviceBytes, _ := yaml.Marshal(serviceConf)
@@ -87,6 +105,7 @@ func GenerateDockerFiles(networkConfigByte []byte, dirpath string) bool {
 	} else {
 		ioutil.WriteFile(dirpath+"/docker-compose.yaml", serviceBytes, 0666)
 	}
+
 	//generate the base.yaml
 	outBytes, _ := yaml.Marshal(BuildBaseImage(addCA, getString(ordConfig["mspID"])))
 	ioutil.WriteFile(dirpath+"/base.yaml", outBytes, 0666)
@@ -120,7 +139,7 @@ func BuildCLI(dirPath string, otherConatiners []string) Container {
 	return cli
 
 }
-func BuildOrderer(cryptoBasePath, ordererName, domainName string) Container {
+func BuildOrderer(cryptoBasePath, ordererName, domainName, port string, dependencies []string) Container {
 
 	extnds := make(map[string]string)
 	extnds["file"] = "base.yaml"
@@ -133,16 +152,67 @@ func BuildOrderer(cryptoBasePath, ordererName, domainName string) Container {
 	var networks = make([]string, 0)
 	networks = append(networks, "fabricnetwork")
 	var ports = make([]string, 0)
-	ports = append(ports, "7050:7050")
+	ports = append(ports, port)
 	var orderer Container
 	orderer.ContainerName = ordFQDN
 	orderer.Extends = extnds
 	orderer.Volumns = vols
 	orderer.Ports = ports
 	orderer.Networks = networks
+	if dependencies != nil && len(dependencies) > 0 {
+		orderer.Depends = dependencies
+	}
 	return orderer
 }
-func BuildPeerImage(cryptoBasePath, peerId, domainName, mspID, couchID, ordererFQDN string, ports []string) Container {
+func BuildKafkas(count int, mainContainer map[string]interface{}, zookeepers []string) []string {
+
+	extnds := make(map[string]string)
+	extnds["file"] = "base.yaml"
+	extnds["service"] = "kafka"
+	var networks = make([]string, 0)
+	networks = append(networks, "fabricnetwork")
+	containerNames := make([]string, 0)
+
+	for index := 0; index < count; index++ {
+		env := make([]string, 0)
+		env = append(env, fmt.Sprintf("KAFKA_BROKER_ID=%d", index))
+		env = append(env, "KAFKA_MIN_INSYNC_REPLICAS=2")
+		env = append(env, "KAFKA_DEFAULT_REPLICATION_FACTOR=3")
+		env = append(env, "KAFKA_ZOOKEEPER_CONNECT=zookeeper0:2181,zookeeper1:2181,zookeeper2:2181")
+		kafka := Container{}
+		kafka.ContainerName = fmt.Sprintf("kafka%d", index)
+		kafka.Extends = extnds
+		kafka.Environment = env
+		kafka.Depends = zookeepers
+		kafka.Networks = networks
+		name := fmt.Sprintf("kafka%d", index)
+		containerNames = append(containerNames, name)
+		mainContainer[name] = kafka
+	}
+	return containerNames
+}
+func BuildZookeeprs(count int, mainContainer map[string]interface{}) []string {
+	extnds := make(map[string]string)
+	extnds["file"] = "base.yaml"
+	extnds["service"] = "zookeeper"
+	var networks = make([]string, 0)
+	networks = append(networks, "fabricnetwork")
+	containerNames := make([]string, 0)
+	for index := 0; index < count; index++ {
+		env := make([]string, 0)
+		env = append(env, fmt.Sprintf("ZOO_MY_ID=%d", (index+1)))
+		env = append(env, "ZOO_SERVERS=server.1=zookeeper0:2888:3888 server.2=zookeeper1:2888:3888 server.3=zookeeper2:2888:3888")
+		zooKeeper := Container{}
+		zooKeeper.ContainerName = fmt.Sprintf("zookeper%d", index)
+		zooKeeper.Extends = extnds
+		zooKeeper.Environment = env
+		zooKeeper.Networks = networks
+		mainContainer[zooKeeper.ContainerName] = zooKeeper
+		containerNames = append(containerNames, zooKeeper.ContainerName)
+	}
+	return containerNames
+}
+func BuildPeerImage(cryptoBasePath, peerId, domainName, mspID, couchID string, ordererFQDN []string, ports []string) Container {
 
 	extnds := make(map[string]string)
 	extnds["file"] = "base.yaml"
@@ -168,7 +238,7 @@ func BuildPeerImage(cryptoBasePath, peerId, domainName, mspID, couchID, ordererF
 	vols = append(vols, cryptoBasePath+"/crypto-config/peerOrganizations/"+domainName+"/peers/"+peerFQDN+"/tls:/etc/hyperledger/fabric/tls")
 	var depends = make([]string, 0)
 	depends = append(depends, couchID)
-	depends = append(depends, ordererFQDN)
+	depends = append(depends, ordererFQDN...)
 	var networks = make([]string, 0)
 	networks = append(networks, "fabricnetwork")
 
@@ -282,6 +352,28 @@ func BuildBaseImage(addCA bool, ordererMSP string) ServiceConfig {
 		ca.Command = "sh -c 'fabric-ca-server start -b admin:adminpw -d'"
 		config["ca"] = ca
 	}
+	var zookeeper Container
+	zookeeper.Image = "orderContainer.ContainerName"
+	zookeeper.Restart = "always"
+	ports := make([]string, 0)
+	ports = append(ports, "'2181'")
+	ports = append(ports, "'2888'")
+	ports = append(ports, "'3888'")
+	zookeeper.Ports = ports
+	config["zookeeper"] = zookeeper
+	var kfka Container
+	kfka.Image = ""
+	kfka.Restart = "always"
+	kfkaEnv := make([]string, 0)
+	kfkaEnv = append(kfkaEnv, "KAFKA_MESSAGE_MAX_BYTES=KAFKA_MESSAGE_MAX_BYTES")
+	kfkaEnv = append(kfkaEnv, "KAFKA_REPLICA_FETCH_MAX_BYTES=103809024")
+	kfkaEnv = append(kfkaEnv, "KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE=false")
+	kfka.Environment = kfkaEnv
+	kports := make([]string, 0)
+	kports = append(kports, "'9092'")
+	kfka.Ports = kports
+	config["kafka"] = kfka
+
 	var serviceConfig ServiceConfig
 	serviceConfig.Version = "2"
 	serviceConfig.Services = config

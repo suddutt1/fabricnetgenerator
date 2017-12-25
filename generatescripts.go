@@ -13,7 +13,6 @@ const _SetPeerTemplate = `
 #!/bin/bash
 export ORDERER_CA=/opt/ws/crypto-config/ordererOrganizations/{{.orderers.domain}}/msp/tlscacerts/tlsca.{{.orderers.domain}}-cert.pem
 {{$primechannel := (index .channels 0).channelName }}
-export CHANNEL_NAME="{{print $primechannel "channel" | ToLower}}"
 if [ $# -lt 2 ];then
 	echo "Usage : . setpeer.sh {{range .orgs}}{{.name}}|{{end}} <peerid>"
 fi
@@ -120,16 +119,21 @@ cd $PWD
 
 const _BuildChannelScript = `
 #!/bin/bash -e
-{{$firstOrg := (index .orgs 0).name}}
+{{ $orderer:= .ordererURL}}
+{{ $root := . }}
+{{range .channels}}
+{{ $channelId := print .channelName "channel" | ToLower }}
+echo "Building channel for {{print $channelId}}" 
+{{$firstOrg := (index .orgs 0) }}
 . setpeer.sh {{$firstOrg}} peer0
-{{ $channelId := (index .channels 0).channelName | ToLower}}
-peer channel create -o {{ .orderers.ordererHostname}}.{{.orderers.domain}}:7050 -c $CHANNEL_NAME -f ./{{print $channelId "channel.tx"}} --tls true --cafile $ORDERER_CA 
-{{ range $org := .orgs}}
-{{ range $peerId := $org.peerNames}}
-. setpeer.sh {{$org.name}} {{$peerId}}
+export CHANNEL_NAME="{{print $channelId }}"
+peer channel create -o {{ print $orderer }} -c $CHANNEL_NAME -f ./{{print $channelId ".tx"}} --tls true --cafile $ORDERER_CA -t 10000
+{{ range $index,$orgName :=.orgs}}{{$orgConfig :=  index $root $orgName }}
+{{ range $i,$peerId:=$orgConfig.peerNames }}
+. setpeer.sh {{$orgName}} {{$peerId}}
+export CHANNEL_NAME="{{print $channelId }}"
 peer channel join -b $CHANNEL_NAME.block
-{{end}}
-{{end}}
+{{end}}{{end}}{{end}}
 `
 const _CleanUp = `
 #!/bin/bash
@@ -233,16 +237,16 @@ func GenerateOtherScripts(path string) bool {
 
 	return true
 }
-func GenerateGenerateArtifactsScript(configBytes []byte, filename string) bool {
+func GenerateGenerateArtifactsScript(config []byte, filename string) bool {
 	funcMap := template.FuncMap{
 		"ToCMDString": ToCMDString,
 		"ToLower":     strings.ToLower,
 		"ToUpper":     strings.ToUpper,
 	}
-	dataMapContainer := make(map[string]interface{})
-	json.Unmarshal(configBytes, &dataMapContainer)
-	addCA := getBoolean(dataMapContainer["addCA"])
 	templateToUse := _GenerateArtifactsTemplate
+	dataMapContainer := make(map[string]interface{})
+	json.Unmarshal(config, &dataMapContainer)
+	addCA := getBoolean(dataMapContainer["addCA"])
 	if addCA == true {
 		templateToUse = _GenerateArtifactsTemplateWithCA
 	}
@@ -294,6 +298,7 @@ func GenerateBuildAndJoinChannelScript(config []byte, filename string) bool {
 		return false
 	}
 	dataMapContainer := make(map[string]interface{})
+	channelMap := make(map[string]interface{})
 	json.Unmarshal(config, &dataMapContainer)
 	orgs, _ := dataMapContainer["orgs"].([]interface{})
 	for _, org := range orgs {
@@ -305,9 +310,19 @@ func GenerateBuildAndJoinChannelScript(config []byte, filename string) bool {
 			peerNames = append(peerNames, fmt.Sprintf("peer%d", index))
 		}
 		orgConfig["peerNames"] = peerNames
+		orgName := getString(orgConfig["name"])
+		channelMap[orgName] = orgConfig
+	}
+	channelMap["channels"] = dataMapContainer["channels"]
+	//Resolve the orderer name
+	ordererConfig := getMap(dataMapContainer["orderers"])
+	if ifExists(ordererConfig, "type") && ifExists(ordererConfig, "haCount") && getString(ordererConfig["type"]) == "kafka" {
+		channelMap["ordererURL"] = fmt.Sprintf("%s0.%s:7050", getString(ordererConfig["ordererHostname"]), getString(ordererConfig["domain"]))
+	} else {
+		channelMap["ordererURL"] = fmt.Sprintf("%s.%s:7050", getString(ordererConfig["ordererHostname"]), getString(ordererConfig["domain"]))
 	}
 	var outputBytes bytes.Buffer
-	err = tmpl.Execute(&outputBytes, dataMapContainer)
+	err = tmpl.Execute(&outputBytes, channelMap)
 	if err != nil {
 		fmt.Printf("Error in generating the buildchannel.sh file %v\n", err)
 		return false

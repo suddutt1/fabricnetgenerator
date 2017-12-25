@@ -45,7 +45,24 @@ Organizations:
           - Host: peer0.{{.domain}}
             Port: 7051
         {{ end }}
-
+{{ if  and (eq .orderers.type "kafka")  (  .orderers.haCount ) }}
+Orderer: &OrdererDefaults
+        OrdererType: kafka
+        Addresses:{{ range .ordererFDQNList }}
+          - {{.}}{{end}}
+        BatchTimeout: 2s
+        BatchSize:
+          MaxMessageCount: 10
+          AbsoluteMaxBytes: 98 MB
+          PreferredMaxBytes: 512 KB
+        Kafka:
+          Brokers:
+            - kafka0:9092
+            - kafka1:9092
+            - kafka2:9092
+            - kafka3:9092
+        Organizations:
+{{else}}
 Orderer: &OrdererDefaults
         OrdererType: solo
         Addresses:
@@ -59,7 +76,8 @@ Orderer: &OrdererDefaults
           Brokers:
             - 127.0.0.1:9092
         Organizations:
-    
+
+{{end}}    
 Application: &ApplicationDefaults
     Organizations:
 `
@@ -73,12 +91,29 @@ func GenerateConfigTxGen(config []byte, filename string) bool {
 	}
 	dataMapContainer := make(map[string]interface{})
 	json.Unmarshal(config, &dataMapContainer)
+	ordererConfig := getMap(dataMapContainer["orderers"])
+	if ifExists(ordererConfig, "type") && ifExists(ordererConfig, "haCount") {
+		if getString(ordererConfig["type"]) == "kafka" {
+			hostName := getString(ordererConfig["ordererHostname"])
+			domainName := getString(ordererConfig["domain"])
+			listOfOrderers := make([]string, 0)
+			for index := 0; index < getNumber(ordererConfig["haCount"]); index++ {
+				listOfOrderers = append(listOfOrderers, fmt.Sprintf("%s%d.%s", hostName, index, domainName))
+			}
+			dataMapContainer["ordererFDQNList"] = listOfOrderers
+		}
+	}
+
 	var outputBytes bytes.Buffer
 	err = tmpl.Execute(&outputBytes, dataMapContainer)
 	if err != nil {
 		fmt.Printf("Error in generating the configtx.yaml file %v\n", err)
 		return false
 	}
-	ioutil.WriteFile(filename, outputBytes.Bytes(), 0666)
+	err = ioutil.WriteFile(filename, outputBytes.Bytes(), 0666)
+	if err != nil {
+		fmt.Printf("Error in generating file %v\n", err)
+		return false
+	}
 	return true
 }
