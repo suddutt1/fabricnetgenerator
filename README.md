@@ -8,6 +8,7 @@ Hyperledger Fabric Network Generator
 2. Build using 
     ```sh
     cd <path to source code directory>
+    go get gopkg.in/yaml.v2
     go build
     ```
 3. Install using  the following commands ( Make sure that GOBIN environment variable is set and your PATH contains GOBIN in it)
@@ -24,9 +25,11 @@ Hyperledger Fabric Network Generator
     ```sh
     . downloadbin.sh # One time command
     . generateartifacts.sh # One time to generate the crypto materials
+    mkdir -p chaincode/github.com/<chain code package name> # If you have more that one chain code , then you need to repeat this step for each chain code pakage.
+    
     docker-compose up -d # To start the network
-    docker exec -it cli bash -f ./buildandjoinchannel.sh # To build and join channel
-    docker exec -it cli bash -f ./<chaincode id>_install.sh # To install the chain code
+    docker exec -it cli bash -e ./buildandjoinchannel.sh # To build and join channel
+    docker exec -it cli bash -e ./<chaincode id>_install.sh # To install the chain code
     
     ```
 
