@@ -70,6 +70,7 @@ func buildOrderConfig(ordererConfig map[string]interface{}) map[string]interface
 		if getString(ordererConfig["type"]) == "kafka" {
 			template := make(map[string]interface{})
 			template["Count"] = ordererConfig["haCount"]
+			template["Hostname"] = fmt.Sprintf("%s{{.Index}}", getString(ordererConfig["ordererHostname"]))
 			outputStructure["Template"] = template
 		}
 	}

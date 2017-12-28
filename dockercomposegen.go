@@ -203,7 +203,7 @@ func BuildZookeeprs(count int, mainContainer map[string]interface{}) []string {
 		env = append(env, fmt.Sprintf("ZOO_MY_ID=%d", (index+1)))
 		env = append(env, "ZOO_SERVERS=server.1=zookeeper0:2888:3888 server.2=zookeeper1:2888:3888 server.3=zookeeper2:2888:3888")
 		zooKeeper := Container{}
-		zooKeeper.ContainerName = fmt.Sprintf("zookeper%d", index)
+		zooKeeper.ContainerName = fmt.Sprintf("zookeeper%d", index)
 		zooKeeper.Extends = extnds
 		zooKeeper.Environment = env
 		zooKeeper.Networks = networks
@@ -353,24 +353,24 @@ func BuildBaseImage(addCA bool, ordererMSP string) ServiceConfig {
 		config["ca"] = ca
 	}
 	var zookeeper Container
-	zookeeper.Image = "orderContainer.ContainerName"
+	zookeeper.Image = "hyperledger/fabric-zookeeper:${IMAGE_TAG}"
 	zookeeper.Restart = "always"
 	ports := make([]string, 0)
-	ports = append(ports, "'2181'")
-	ports = append(ports, "'2888'")
-	ports = append(ports, "'3888'")
+	ports = append(ports, "2181")
+	ports = append(ports, "2888")
+	ports = append(ports, "3888")
 	zookeeper.Ports = ports
 	config["zookeeper"] = zookeeper
 	var kfka Container
-	kfka.Image = ""
+	kfka.Image = "hyperledger/fabric-kafka:${IMAGE_TAG}"
 	kfka.Restart = "always"
 	kfkaEnv := make([]string, 0)
-	kfkaEnv = append(kfkaEnv, "KAFKA_MESSAGE_MAX_BYTES=KAFKA_MESSAGE_MAX_BYTES")
+	kfkaEnv = append(kfkaEnv, "KAFKA_MESSAGE_MAX_BYTES=103809024")
 	kfkaEnv = append(kfkaEnv, "KAFKA_REPLICA_FETCH_MAX_BYTES=103809024")
 	kfkaEnv = append(kfkaEnv, "KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE=false")
 	kfka.Environment = kfkaEnv
 	kports := make([]string, 0)
-	kports = append(kports, "'9092'")
+	kports = append(kports, "9092")
 	kfka.Ports = kports
 	config["kafka"] = kfka
 
