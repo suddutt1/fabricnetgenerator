@@ -52,9 +52,7 @@ func buildOrderConfig(ordererConfig map[string]interface{}) map[string]interface
 	outputStructure["Name"] = getString(ordererConfig["name"])
 	outputStructure["Domain"] = getString(ordererConfig["domain"])
 	specs := make([]map[string]interface{}, 0)
-	hostnameSpec := make(map[string]interface{})
-	hostnameSpec["Hostname"] = getString(ordererConfig["ordererHostname"])
-	specs = append(specs, hostnameSpec)
+
 	//Assuing one as of now
 	sansInput := strings.Split(getString(ordererConfig["SANS"]), ",")
 
@@ -65,7 +63,7 @@ func buildOrderConfig(ordererConfig map[string]interface{}) map[string]interface
 	sansSpec := make(map[string]interface{})
 	sansSpec["SANS"] = sansArray
 	specs = append(specs, sansSpec)
-	outputStructure["Specs"] = specs
+
 	if ifExists(ordererConfig, "haCount") && ifExists(ordererConfig, "type") {
 		if getString(ordererConfig["type"]) == "kafka" {
 			template := make(map[string]interface{})
@@ -73,8 +71,12 @@ func buildOrderConfig(ordererConfig map[string]interface{}) map[string]interface
 			template["Hostname"] = fmt.Sprintf("%s{{.Index}}", getString(ordererConfig["ordererHostname"]))
 			outputStructure["Template"] = template
 		}
+	} else {
+		hostnameSpec := make(map[string]interface{})
+		hostnameSpec["Hostname"] = getString(ordererConfig["ordererHostname"])
+		specs = append(specs, hostnameSpec)
 	}
-
+	outputStructure["Specs"] = specs
 	return outputStructure
 }
 func buildOrgConfig(orgConfig map[string]interface{}, useCA bool) map[string]interface{} {
