@@ -20,39 +20,5 @@ func main() {
 		return
 	}
 
-	if !GenerateConfigTxGen(configBytes, "./configtx.yaml") {
-		fmt.Errorf("Error in generation of configtx.yaml")
-	}
-	fmt.Println("configtx.yaml generated ...")
-	if !GenerateCrytoConfig(configBytes, "./crypto-config.yaml") {
-		fmt.Errorf("Error in generation of crypto-config.yaml")
-		return
-	}
-
-	fmt.Println("crypto-config.yaml generated....")
-	if !GenerateDockerFiles(configBytes, ".") {
-		fmt.Errorf("Error in generating the docker files")
-	}
-	fmt.Println("Generated docker-compose.yaml ..")
-	fmt.Println("setpeers.sh generation in progress ....")
-	if !GenerateSetPeer(configBytes, "./setpeer.sh") {
-		fmt.Errorf("Error in generating the setpeer.sh")
-	}
-	fmt.Println("generateartifacts.sh generation in progress ....")
-	if !GenerateGenerateArtifactsScript(configBytes, "./generateartifacts.sh") {
-		fmt.Errorf("Error in generating the generateartifacts.sh")
-	}
-
-	fmt.Println("buildandjoinchannel.sh generation in progress ....")
-	if !GenerateBuildAndJoinChannelScript(configBytes, "./buildandjoinchannel.sh") {
-		fmt.Println("Error in generating the buildandjoinchannel.sh")
-	}
-	fmt.Println("Generating misc scripts ....")
-	if !GenerateOtherScripts("./") {
-		fmt.Println("Error in generating misc scripts")
-	}
-	fmt.Println("Generating chaincode related scripts ....")
-	if !GenerateChainCodeScripts(configBytes, "./") {
-		fmt.Println("Error in generating chain code related scripts")
-	}
+	GenerateNetworkItems(configBytes, ".")
 }

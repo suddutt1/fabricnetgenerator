@@ -32,6 +32,7 @@ type Container struct {
 }
 
 func GenerateDockerFiles(networkConfigByte []byte, dirpath string) bool {
+	allPortsMap := make(map[string]string)
 	addCA := false
 	networkConfig := make(map[string]interface{})
 	json.Unmarshal(networkConfigByte, &networkConfig)
@@ -61,13 +62,13 @@ func GenerateDockerFiles(networkConfigByte []byte, dirpath string) bool {
 		ordererHostName := getString(ordConfig["ordererHostname"])
 		ordererDomainName := getString(ordConfig["domain"])
 		for index := 0; index < ordererCount; index++ {
-			orderContainer := BuildOrderer(".", fmt.Sprintf("%s%d", ordererHostName, index), ordererDomainName, ordeerPortMap[index][0], kafkas)
+			orderContainer := BuildOrderer(".", fmt.Sprintf("%s%d", ordererHostName, index), ordererDomainName, ordeerPortMap[index][0], kafkas, allPortsMap)
 			containers[orderContainer.ContainerName] = orderContainer
 			cliDependency = append(cliDependency, orderContainer.ContainerName)
 			ordererContainerNames = append(ordererContainerNames, orderContainer.ContainerName)
 		}
 	} else {
-		orderContainer := BuildOrderer(".", getString(ordConfig["ordererHostname"]), getString(ordConfig["domain"]), "7050:7050", nil)
+		orderContainer := BuildOrderer(".", getString(ordConfig["ordererHostname"]), getString(ordConfig["domain"]), "7050:7050", nil, allPortsMap)
 		containers[orderContainer.ContainerName] = orderContainer
 		cliDependency = append(cliDependency, orderContainer.ContainerName)
 		ordererContainerNames = append(ordererContainerNames, orderContainer.ContainerName)
@@ -80,15 +81,15 @@ func GenerateDockerFiles(networkConfigByte []byte, dirpath string) bool {
 		peerCount := int(peerCountFlt)
 		fmt.Printf(" Peer count is %d \n ", peerCount)
 		if addCA == true {
-			caContainer := BuildCAImage(".", getString(orgConfig["domain"]), getString(orgConfig["name"]), caPortMap[index])
+			caContainer := BuildCAImage(".", getString(orgConfig["domain"]), getString(orgConfig["name"]), caPortMap[index], allPortsMap)
 			containers[caContainer.ContainerName] = caContainer
 		}
 		for peerIndex := 0; peerIndex < peerCount; peerIndex++ {
 			peerID := fmt.Sprintf("peer%d", peerIndex)
 			couchID := fmt.Sprintf("couch%d", couchCount)
 			ports := peerPortMap[couchCount]
-			couchContainer := BuildCouchDB(couchID, couchPortMap[couchCount])
-			containerImage := BuildPeerImage(".", peerID, getString(orgConfig["domain"]), getString(orgConfig["mspID"]), couchID, ordererContainerNames, ports)
+			couchContainer := BuildCouchDB(couchID, couchPortMap[couchCount], allPortsMap)
+			containerImage := BuildPeerImage(".", peerID, getString(orgConfig["domain"]), getString(orgConfig["mspID"]), couchID, ordererContainerNames, ports, allPortsMap)
 			containers[couchContainer.ContainerName] = couchContainer
 			containers[containerImage.ContainerName] = containerImage
 			cliDependency = append(cliDependency, containerImage.ContainerName)
@@ -109,6 +110,8 @@ func GenerateDockerFiles(networkConfigByte []byte, dirpath string) bool {
 	//generate the base.yaml
 	outBytes, _ := yaml.Marshal(BuildBaseImage(addCA, getString(ordConfig["mspID"])))
 	ioutil.WriteFile(dirpath+"/base.yaml", outBytes, 0666)
+	portDetailsBytes, _ := json.MarshalIndent(allPortsMap, "", "  ")
+	ioutil.WriteFile(dirpath+"/portmap.json", portDetailsBytes, 0666)
 
 	return true
 
@@ -139,7 +142,7 @@ func BuildCLI(dirPath string, otherConatiners []string) Container {
 	return cli
 
 }
-func BuildOrderer(cryptoBasePath, ordererName, domainName, port string, dependencies []string) Container {
+func BuildOrderer(cryptoBasePath, ordererName, domainName, port string, dependencies []string, allPortsMap map[string]string) Container {
 
 	extnds := make(map[string]string)
 	extnds["file"] = "base.yaml"
@@ -153,6 +156,7 @@ func BuildOrderer(cryptoBasePath, ordererName, domainName, port string, dependen
 	networks = append(networks, "fabricnetwork")
 	var ports = make([]string, 0)
 	ports = append(ports, port)
+	allPortsMap[ordFQDN] = port
 	var orderer Container
 	orderer.ContainerName = ordFQDN
 	orderer.Extends = extnds
@@ -212,7 +216,7 @@ func BuildZookeeprs(count int, mainContainer map[string]interface{}) []string {
 	}
 	return containerNames
 }
-func BuildPeerImage(cryptoBasePath, peerId, domainName, mspID, couchID string, ordererFQDN []string, ports []string) Container {
+func BuildPeerImage(cryptoBasePath, peerId, domainName, mspID, couchID string, ordererFQDN []string, ports []string, allPortsMap map[string]string) Container {
 
 	extnds := make(map[string]string)
 	extnds["file"] = "base.yaml"
@@ -250,9 +254,10 @@ func BuildPeerImage(cryptoBasePath, peerId, domainName, mspID, couchID string, o
 	container.Networks = networks
 	container.Ports = ports
 	container.Extends = extnds
+	markPorts(ports, allPortsMap, peerFQDN)
 	return container
 }
-func BuildCAImage(cryptoBasePath, domainName, orgname string, ports []string) Container {
+func BuildCAImage(cryptoBasePath, domainName, orgname string, ports []string, allPortsMap map[string]string) Container {
 
 	extnds := make(map[string]string)
 	extnds["file"] = "base.yaml"
@@ -277,9 +282,10 @@ func BuildCAImage(cryptoBasePath, domainName, orgname string, ports []string) Co
 	container.Networks = networks
 	container.Ports = ports
 	container.Extends = extnds
+	markPorts(ports, allPortsMap, peerFQDN)
 	return container
 }
-func BuildCouchDB(couchID string, ports []string) Container {
+func BuildCouchDB(couchID string, ports []string, allPortsMap map[string]string) Container {
 	var couchContainer Container
 	couchContainer.ContainerName = couchID
 	extnds := make(map[string]string)
@@ -292,6 +298,7 @@ func BuildCouchDB(couchID string, ports []string) Container {
 	couchContainer.Networks = networks
 
 	couchContainer.Ports = ports
+	markPorts(ports, allPortsMap, couchID)
 	return couchContainer
 }
 func BuildBaseImage(addCA bool, ordererMSP string) ServiceConfig {
@@ -403,4 +410,9 @@ func generatePorts(basePorts []int) map[int][]string {
 	}
 	//fmt.Printf("%v\n", portMap)
 	return portMap
+}
+func markPorts(ports []string, allPortsMap map[string]string, containerName string) {
+	for index, portmap := range ports {
+		allPortsMap[fmt.Sprintf("%s-%d", containerName, index)] = portmap
+	}
 }
