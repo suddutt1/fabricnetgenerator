@@ -49,7 +49,7 @@ Organizations:
 Orderer: &OrdererDefaults
         OrdererType: kafka
         Addresses:{{ range .ordererFDQNList }}
-          - {{.}}{{end}}
+          - {{.}}:7050{{end}}
         BatchTimeout: 2s
         BatchSize:
           MaxMessageCount: 10
