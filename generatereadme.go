@@ -26,6 +26,7 @@ func GenerateReadme(config []byte, path string) {
 	buffer.WriteString("   docker exec -it cli bash -e ./buildandjoinchannel.sh \n\n")
 	buffer.WriteString("Install and instantiate chain codes\n")
 	buffer.WriteString("Create the chain code directiory.\n")
+	buffer.WriteString("  cd <network> \n")
 
 	configMap := make(map[string]interface{})
 	//chain code
@@ -33,7 +34,7 @@ func GenerateReadme(config []byte, path string) {
 	ccList := configMap["chaincodes"].([]interface{})
 	for _, ccDetails := range ccList {
 		ccDetailsMap := ccDetails.(map[string]interface{})
-		buffer.WriteString(fmt.Sprintf("  mkdir -p <network>/chaincode/%s \n", ccDetailsMap["src"]))
+		buffer.WriteString(fmt.Sprintf("  mkdir -p chaincode/%s \n", ccDetailsMap["src"]))
 	}
 	buffer.WriteString("Copy the chain code files in the respectivive directories \n")
 
