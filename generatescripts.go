@@ -31,8 +31,6 @@ fi
 	`
 const _GenerateArtifactsTemplate = `
 #!/bin/bash -e
-IMAGE_TAG="$(uname -m)-1.0.0"
-export IMAGE_TAG
 export PWD={{ "pwd" | ToCMDString}}
 
 export FABRIC_CFG_PATH=$PWD
@@ -68,8 +66,6 @@ cd $PWD
 
 const _GenerateArtifactsTemplateWithCA = `
 #!/bin/bash -e
-IMAGE_TAG="$(uname -m)-1.0.0"
-export IMAGE_TAG
 export PWD={{ "pwd" | ToCMDString}}
 
 export FABRIC_CFG_PATH=$PWD
@@ -152,7 +148,8 @@ rm *_update.sh
 `
 const _SetEnv = `
 #!/bin/bash
-export IMAGE_TAG="x86_64-1.0.0"
+export IMAGE_TAG="x86_64-1.1.0-rc1"
+export TP_IMAGE_TAG="x86_64-1.0.6"
 
 `
 const _DOTENV = `
@@ -162,7 +159,7 @@ COMPOSE_PROJECT_NAME=bc
 const _DOWNLOAD_SCRIPTS = `
 #!/bin/bash
 
-export VERSION=1.0.0
+export VERSION=1.1.0-rc1
 export ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')-$(uname -m | sed 's/x86_64/amd64/g')" | awk '{print tolower($0)}')
 #Set MARCH variable i.e ppc64le,s390x,x86_64,i386
 MARCH="x86_64"

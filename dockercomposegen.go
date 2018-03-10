@@ -346,7 +346,7 @@ func BuildBaseImage(addCA bool, ordererMSP string) ServiceConfig {
 	config["orderer"] = ordererBase
 
 	var couchDB Container
-	couchDB.Image = "hyperledger/fabric-couchdb:${IMAGE_TAG}"
+	couchDB.Image = "hyperledger/fabric-couchdb:${TP_IMAGE_TAG}"
 	config["couchdb"] = couchDB
 
 	if addCA == true {
@@ -360,7 +360,7 @@ func BuildBaseImage(addCA bool, ordererMSP string) ServiceConfig {
 		config["ca"] = ca
 	}
 	var zookeeper Container
-	zookeeper.Image = "hyperledger/fabric-zookeeper:${IMAGE_TAG}"
+	zookeeper.Image = "hyperledger/fabric-zookeeper:${TP_IMAGE_TAG}"
 	zookeeper.Restart = "always"
 	ports := make([]string, 0)
 	ports = append(ports, "2181")
@@ -369,7 +369,7 @@ func BuildBaseImage(addCA bool, ordererMSP string) ServiceConfig {
 	zookeeper.Ports = ports
 	config["zookeeper"] = zookeeper
 	var kfka Container
-	kfka.Image = "hyperledger/fabric-kafka:${IMAGE_TAG}"
+	kfka.Image = "hyperledger/fabric-kafka:${TP_IMAGE_TAG}"
 	kfka.Restart = "always"
 	kfkaEnv := make([]string, 0)
 	kfkaEnv = append(kfkaEnv, "KAFKA_MESSAGE_MAX_BYTES=103809024")
