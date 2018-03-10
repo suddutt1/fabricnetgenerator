@@ -9,6 +9,7 @@ import (
 
 func GenerateChainCodeScripts(config []byte, path string) bool {
 	fmt.Println("Generating config scripts")
+	fileNames := make([]string, 0)
 	dataMapContainer := make(map[string]interface{})
 	json.Unmarshal(config, &dataMapContainer)
 	//Build the msp info
@@ -49,10 +50,13 @@ func GenerateChainCodeScripts(config []byte, path string) bool {
 			fmt.Printf("No participants \n")
 			return false
 		}
-		shFileInstall, _ := os.Create(path + ccID + "_install.sh")
+		instShFileName := path + ccID + "_install.sh"
+		fileNames = append(fileNames, instShFileName)
+		shFileInstall, _ := os.Create(instShFileName)
 		shFileInstall.WriteString("#!/bin/bash\n")
-
-		shFileUpdateCC, _ := os.Create(path + ccID + "_update.sh")
+		updShFileName := path + ccID + "_update.sh"
+		fileNames = append(fileNames, updShFileName)
+		shFileUpdateCC, _ := os.Create(updShFileName)
 		shFileUpdateCC.WriteString("#!/bin/bash\n")
 		shFileUpdateCC.WriteString("if [[ ! -z \"$1\" ]]; then  \n")
 		policy := ""
@@ -87,6 +91,8 @@ func GenerateChainCodeScripts(config []byte, path string) bool {
 
 	//instCommand =
 	//     peer chaincode instantiate -o orderer.kg.com:7050 --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA -C $CHANNEL_NAME -n $1 -v $2 -c '{"Args":["init",""]}' -P "OR ('RawMaterialDepartmentMSP.member','ManufacturingDepartmentMSP.member','DistributionCenterMSP.member','DistributionCenterMSP.member')"
-
+	for _, fileName := range fileNames {
+		os.Chmod(fileName, 0777)
+	}
 	return true
 }
