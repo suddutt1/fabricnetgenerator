@@ -19,14 +19,8 @@ func GenerateReadme(config []byte, path string) {
 	buffer.WriteString(" . ./downloadbin.sh \n")
 	buffer.WriteString("\n 2. To Generate the cryto config and other configurations\n ")
 	buffer.WriteString(" . ./generateartifacts.sh \n\n")
-	buffer.WriteString("\n 3. To start the netowrk  \n\n")
-	buffer.WriteString("  . setenv.sh \n")
-	buffer.WriteString("  docker-compose up -d \n")
 
-	buffer.WriteString("\n 4. To build and join channel. Make sure that network is running \n\n")
-	buffer.WriteString("   docker exec -it cli bash -e ./buildandjoinchannel.sh \n\n")
-	buffer.WriteString("\n 5. Install and instantiate chain codes\n")
-	buffer.WriteString("\n 5a. Create the chain code directiory.\n")
+	buffer.WriteString("\n 3. Create the chain code directiory.\n")
 	buffer.WriteString("  cd <network> \n")
 
 	configMap := make(map[string]interface{})
@@ -37,8 +31,13 @@ func GenerateReadme(config []byte, path string) {
 		ccDetailsMap := ccDetails.(map[string]interface{})
 		buffer.WriteString(fmt.Sprintf("  mkdir -p chaincode/%s \n", ccDetailsMap["src"]))
 	}
-	buffer.WriteString("\n 5.b Copy the chain code files in the respectivive directories \n")
-	buffer.WriteString("\n 5.c Install and intantiate the chain codes \n")
+	buffer.WriteString("\n 4. Copy the chain code files in the respectivive directories \n")
+	buffer.WriteString("\n 5. Start the netowrk  \n\n")
+	buffer.WriteString("  . setenv.sh \n")
+	buffer.WriteString("  docker-compose up -d \n")
+	buffer.WriteString("\n 6. Build and join channel. Make sure that network is running \n\n")
+	buffer.WriteString("   docker exec -it cli bash -e ./buildandjoinchannel.sh \n\n")
+	buffer.WriteString("\n 7. Install and intantiate the chain codes \n")
 	for _, ccDetails := range ccList {
 		ccDetailsMap := ccDetails.(map[string]interface{})
 
@@ -60,7 +59,7 @@ func GenerateReadme(config []byte, path string) {
 	buffer.WriteString("  . setenv.sh \n")
 	buffer.WriteString("  docker-compose down \n")
 	buffer.WriteString(" If you are stoping a network using the above commands , " +
-		"\n to start the network again , you have to execute steps 2,3,4 & 5a,5c of the first time setup.\n ")
+		"\n to start the network again , you have to execute steps 2,5,6,7 of the first time setup.\n ")
 
 	buffer.WriteString("\n\n========To destory  an existing network ( END)============= \n")
 	ioutil.WriteFile(path+"/README.txt", buffer.Bytes(), 0666)

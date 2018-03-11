@@ -1,6 +1,7 @@
 # Hyperledger Fabric Network Generator
 ### This tool generates hyperledger fabric v1.x network related files to spwan a network quickly
 Hyperledger Fabric Network Generator
+### March 9, 2018 : Moved to HLF Version 1.1.0-rc1
 ### December 25, 2017 : Added kafka option for HA orderers
 
 ## Installation 
