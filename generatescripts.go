@@ -148,8 +148,8 @@ rm *_update.sh
 `
 const _SetEnv = `
 #!/bin/bash
-export IMAGE_TAG="x86_64-1.1.0-rc1"
-export TP_IMAGE_TAG="x86_64-1.0.6"
+export IMAGE_TAG="x86_64-{{.fabricVersion}}"
+export TP_IMAGE_TAG="x86_64-{{.thirdPartyVersion}}"
 
 `
 const _DOTENV = `
@@ -159,7 +159,7 @@ COMPOSE_PROJECT_NAME=bc
 const _DOWNLOAD_SCRIPTS = `
 #!/bin/bash
 
-export VERSION=1.1.0-rc1
+export VERSION={{.fabricVersion}}
 export ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')-$(uname -m | sed 's/x86_64/amd64/g')" | awk '{print tolower($0)}')
 #Set MARCH variable i.e ppc64le,s390x,x86_64,i386
 MARCH="x86_64"
@@ -176,13 +176,27 @@ curl https://nexus.hyperledger.org/content/repositories/releases/org/hyperledger
 func ToCMDString(input string) string {
 	return "`" + input + "`"
 }
-func GenerateOtherScripts(path string) bool {
+func GenerateOtherScripts(config []byte, path string) bool {
 	tmpl, err := template.New("dotenv").Parse(_DOTENV)
 	if err != nil {
 		fmt.Printf("Error in reading template %v\n", err)
 		return false
 	}
 	dataMapContainer := make(map[string]interface{})
+	json.Unmarshal(config, &dataMapContainer)
+	if ifExists(dataMapContainer, "fabricVersion") {
+		version, _ := dataMapContainer["fabricVersion"].(string)
+		if strings.HasPrefix(version, "1.0") {
+			dataMapContainer["thirdPartyVersion"] = "1.0.0"
+		} else {
+			dataMapContainer["thirdPartyVersion"] = "1.0.6"
+		}
+
+	} else {
+		dataMapContainer["fabricVersion"] = "1.1.0"
+		dataMapContainer["thirdPartyVersion"] = "1.0.6"
+	}
+
 	var outputBytes bytes.Buffer
 	err = tmpl.Execute(&outputBytes, dataMapContainer)
 	if err != nil {

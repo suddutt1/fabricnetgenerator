@@ -31,7 +31,7 @@ func GenerateNetworkItems(configBytes []byte, baseOutputPath string) {
 		fmt.Println("Error in generating the buildandjoinchannel.sh")
 	}
 	fmt.Println("Generating misc scripts ....")
-	if !GenerateOtherScripts(baseOutputPath + "/") {
+	if !GenerateOtherScripts(configBytes, baseOutputPath+"/") {
 		fmt.Println("Error in generating misc scripts")
 	}
 	fmt.Println("Generating chaincode related scripts ....")

@@ -1,4 +1,5 @@
 {
+    "fabricVersion":"1.0.0",
     "orderers":{
         "name" :"Orderer","mspID":"ElementsOrdererMSP","domain":"elements.net","ordererHostname":"eorderer","SANS":"localhost","type":"kafka","haCount":3
     },
