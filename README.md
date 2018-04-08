@@ -1,6 +1,19 @@
 # Hyperledger Fabric Network Generator
 ### This tool generates hyperledger fabric v1.x network related files to spwan a network quickly
 Hyperledger Fabric Network Generator
+### April 8, 2018: Added documentation for running the chain code after installation 
+
+ #### To test the chain code 
+ ```sh 
+ docker exec -it cli bash # This opens the cli shell
+ ```
+ Inside the cli shell run the following commands
+ ```sh
+ . setpeer.sh Water peer1 
+ export CHANNEL_NAME="airwaterchannel"
+ peer chaincode query -n bt -c '{"Args":["probe",""]}' -C $CHANNEL_NAME
+ ```
+ 
 ### March 9, 2018 : Moved to HLF Version 1.1.0-rc1
 ### December 25, 2017 : Added kafka option for HA orderers
 
