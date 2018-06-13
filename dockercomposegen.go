@@ -425,7 +425,7 @@ func generatePorts(basePorts []int, portRegulator *PortRegulator) map[int][]stri
 		peerCount++
 		offset += 1000
 	}
-	//fmt.Printf("%v\n", portMap)
+
 	return portMap
 }
 func markPorts(ports []string, allPortsMap map[string]string, containerName string) {
