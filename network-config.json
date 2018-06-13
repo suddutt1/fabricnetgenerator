@@ -4,6 +4,7 @@
         "name" :"Orderer","mspID":"ElementsOrdererMSP","domain":"elements.net","ordererHostname":"eorderer","SANS":"localhost","type":"kafka","haCount":3
     },
     "addCA":"false",
+    "startPort":20000,
     "orgs":[
         { 
             "name" :"Air",

@@ -1,6 +1,10 @@
 # Hyperledger Fabric Network Generator
 ### This tool generates hyperledger fabric v1.x network related files to spwan a network quickly
 Hyperledger Fabric Network Generator
+### June 12, 2018: Added the option to generate ports starting from an input numnber
+1. Refer to the startPort entry in the network-config.json
+2. Tested for solo. Need to be tested for kafka based orderer options. 
+3. The port numbers generated are not continous 
 ### April 8, 2018: Added documentation for running the chain code after installation 
 
  #### To test the chain code 
