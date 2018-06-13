@@ -9,6 +9,9 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+type PortRegulator struct {
+	Value int
+}
 type ServiceConfig struct {
 	Version  string                 `yaml:"version,flow"`
 	Network  map[string]interface{} `yaml:"networks,omitempty"`
@@ -32,6 +35,7 @@ type Container struct {
 }
 
 func GenerateDockerFiles(networkConfigByte []byte, dirpath string) bool {
+	var portRegulator *PortRegulator
 	allPortsMap := make(map[string]string)
 	addCA := false
 	networkConfig := make(map[string]interface{})
@@ -39,10 +43,16 @@ func GenerateDockerFiles(networkConfigByte []byte, dirpath string) bool {
 	addCA = getBoolean(networkConfig["addCA"])
 	orgConfigs, _ := networkConfig["orgs"].([]interface{})
 	couchCount := 0
-	peerPortMap := generatePorts([]int{7051, 7053})
-	couchPortMap := generatePorts([]int{5984})
-	caPortMap := generatePorts([]int{7054})
-	ordeerPortMap := generatePorts([]int{7050})
+	startPort := getNumber(networkConfig["startPort"])
+	if startPort > 0 {
+		portRegulator = new(PortRegulator)
+		portRegulator.Value = startPort
+	}
+	peerPortMap := generatePorts([]int{7051, 7053}, portRegulator)
+	couchPortMap := generatePorts([]int{5984}, portRegulator)
+	caPortMap := generatePorts([]int{7054}, portRegulator)
+	ordeerPortMap := generatePorts([]int{7050}, portRegulator)
+
 	var serviceConf ServiceConfig
 	serviceConf.Version = "2"
 	netWrk := make(map[string]interface{})
@@ -68,7 +78,7 @@ func GenerateDockerFiles(networkConfigByte []byte, dirpath string) bool {
 			ordererContainerNames = append(ordererContainerNames, orderContainer.ContainerName)
 		}
 	} else {
-		orderContainer := BuildOrderer(".", getString(ordConfig["ordererHostname"]), getString(ordConfig["domain"]), "7050:7050", nil, allPortsMap)
+		orderContainer := BuildOrderer(".", getString(ordConfig["ordererHostname"]), getString(ordConfig["domain"]), ordeerPortMap[0][0], nil, allPortsMap)
 		containers[orderContainer.ContainerName] = orderContainer
 		cliDependency = append(cliDependency, orderContainer.ContainerName)
 		ordererContainerNames = append(ordererContainerNames, orderContainer.ContainerName)
@@ -387,7 +397,7 @@ func BuildBaseImage(addCA bool, ordererMSP string) ServiceConfig {
 
 	return serviceConfig
 }
-func generatePorts(basePorts []int) map[int][]string {
+func generatePorts(basePorts []int, portRegulator *PortRegulator) map[int][]string {
 	//Assuming we have 4 digit port
 	portMap := make(map[int][]string)
 	allGenerated := true
@@ -398,8 +408,15 @@ func generatePorts(basePorts []int) map[int][]string {
 		for _, port := range basePorts {
 			allGenerated = allGenerated && (port+offset < 65000)
 			if allGenerated {
-				mapDef := fmt.Sprintf("%d:%d", port+offset, port)
-				portMap[peerCount] = append(portMap[peerCount], mapDef)
+				if portRegulator == nil {
+
+					mapDef := fmt.Sprintf("%d:%d", port+offset, port)
+					portMap[peerCount] = append(portMap[peerCount], mapDef)
+				} else {
+
+					mapDef := fmt.Sprintf("%d:%d", portRegulator.GetPort(), port)
+					portMap[peerCount] = append(portMap[peerCount], mapDef)
+				}
 
 			} else {
 				break
@@ -415,4 +432,9 @@ func markPorts(ports []string, allPortsMap map[string]string, containerName stri
 	for index, portmap := range ports {
 		allPortsMap[fmt.Sprintf("%s-%d", containerName, index)] = portmap
 	}
+}
+
+func (pr *PortRegulator) GetPort() int {
+	pr.Value = pr.Value + 1
+	return pr.Value
 }
