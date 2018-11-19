@@ -142,6 +142,7 @@ func BuildCLI(dirPath string, otherConatiners []string) Container {
 	cliEnvironment = append(cliEnvironment, "GOPATH=/opt/gopath")
 	cliEnvironment = append(cliEnvironment, "CORE_LOGGING_LEVEL=DEBUG")
 	cliEnvironment = append(cliEnvironment, "CORE_PEER_ID=cli")
+	cliEnvironment = append(cliEnvironment, "GODEBUG=netdns=go")
 
 	cli.Environment = cliEnvironment
 	cli.Volumns = vols
@@ -325,6 +326,7 @@ func BuildBaseImage(addCA bool, ordererMSP string) ServiceConfig {
 	peerEnvironment = append(peerEnvironment, "CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt")
 	peerEnvironment = append(peerEnvironment, "CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key")
 	peerEnvironment = append(peerEnvironment, "CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt")
+	peerEnvironment = append(peerEnvironment, "GODEBUG=netdns=go")
 
 	peerbase.Image = "hyperledger/fabric-peer:${IMAGE_TAG}"
 	peerbase.Environment = peerEnvironment
@@ -348,7 +350,7 @@ func BuildBaseImage(addCA bool, ordererMSP string) ServiceConfig {
 	ordererEnvironment = append(ordererEnvironment, "ORDERER_KAFKA_RETRY_SHORTINTERVAL=1s")
 	ordererEnvironment = append(ordererEnvironment, "ORDERER_KAFKA_RETRY_SHORTTOTAL=30s")
 	ordererEnvironment = append(ordererEnvironment, "ORDERER_KAFKA_VERBOSE=true")
-
+	ordererEnvironment = append(ordererEnvironment, "GODEBUG=netdns=go")
 	ordererBase.Image = "hyperledger/fabric-orderer:${IMAGE_TAG}"
 	ordererBase.Environment = ordererEnvironment
 	ordererBase.WorkingDir = "/opt/gopath/src/github.com/hyperledger/fabric"
@@ -358,6 +360,9 @@ func BuildBaseImage(addCA bool, ordererMSP string) ServiceConfig {
 	var couchDB Container
 	couchDB.Image = "hyperledger/fabric-couchdb:${TP_IMAGE_TAG}"
 	config["couchdb"] = couchDB
+	couchEnv := make([]string, 0)
+	couchEnv = append(couchEnv, "GODEBUG=netdns=go")
+	couchDB.Environment = couchEnv
 
 	if addCA == true {
 		var ca Container
@@ -365,6 +370,7 @@ func BuildBaseImage(addCA bool, ordererMSP string) ServiceConfig {
 		caEnvironment := make([]string, 0)
 		caEnvironment = append(caEnvironment, "FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server")
 		caEnvironment = append(caEnvironment, "FABRIC_CA_SERVER_TLS_ENABLED=true")
+		caEnvironment = append(caEnvironment, "GODEBUG=netdns=go")
 		ca.Environment = caEnvironment
 		ca.Command = "sh -c 'fabric-ca-server start -b admin:adminpw -d'"
 		config["ca"] = ca
@@ -372,6 +378,9 @@ func BuildBaseImage(addCA bool, ordererMSP string) ServiceConfig {
 	var zookeeper Container
 	zookeeper.Image = "hyperledger/fabric-zookeeper:${TP_IMAGE_TAG}"
 	zookeeper.Restart = "always"
+	zkEnv := make([]string, 0)
+	zkEnv = append(zkEnv, "GODEBUG=netdns=go")
+	zookeeper.Environment = zkEnv
 	ports := make([]string, 0)
 	ports = append(ports, "2181")
 	ports = append(ports, "2888")
@@ -385,6 +394,7 @@ func BuildBaseImage(addCA bool, ordererMSP string) ServiceConfig {
 	kfkaEnv = append(kfkaEnv, "KAFKA_MESSAGE_MAX_BYTES=103809024")
 	kfkaEnv = append(kfkaEnv, "KAFKA_REPLICA_FETCH_MAX_BYTES=103809024")
 	kfkaEnv = append(kfkaEnv, "KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE=false")
+	kfkaEnv = append(kfkaEnv, "GODEBUG=netdns=go")
 	kfka.Environment = kfkaEnv
 	kports := make([]string, 0)
 	kports = append(kports, "9092")
