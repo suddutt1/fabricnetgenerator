@@ -172,6 +172,15 @@ echo "===> Downloading platform binaries"
 curl https://nexus.hyperledger.org/content/repositories/releases/org/hyperledger/fabric/hyperledger-fabric/${ARCH}-${VERSION}/hyperledger-fabric-${ARCH}-${VERSION}.tar.gz | tar xz
 
 `
+const _VERSION_COMP_MAP = `
+{
+	"1.0.0":{ "fabricCore":"1.0.0","thirdParty":"1.0.0"},
+	"1.0.4":{ "fabricCore":"1.0.4","thirdParty":"1.0.4"},
+	"1.1.0":{ "fabricCore":"1.1.0","thirdParty":"1.0.6"}
+	
+}	
+
+`
 
 func ToCMDString(input string) string {
 	return "`" + input + "`"
@@ -186,11 +195,9 @@ func GenerateOtherScripts(config []byte, path string) bool {
 	json.Unmarshal(config, &dataMapContainer)
 	if ifExists(dataMapContainer, "fabricVersion") {
 		version, _ := dataMapContainer["fabricVersion"].(string)
-		if strings.HasPrefix(version, "1.0") {
-			dataMapContainer["thirdPartyVersion"] = "1.0.0"
-		} else {
-			dataMapContainer["thirdPartyVersion"] = "1.0.6"
-		}
+		core, thridParty := GetVersions(version)
+		dataMapContainer["fabricVersion"] = core
+		dataMapContainer["thirdPartyVersion"] = thridParty
 
 	} else {
 		dataMapContainer["fabricVersion"] = "1.1.0"
@@ -340,4 +347,27 @@ func GenerateBuildAndJoinChannelScript(config []byte, filename string) bool {
 	}
 	ioutil.WriteFile(filename, outputBytes.Bytes(), 0777)
 	return true
+}
+func GetVersions(version string) (string, string) {
+	tmpl, err := template.New("versionMap").Parse(_VERSION_COMP_MAP)
+	if err != nil {
+		fmt.Printf("Error in reading template %v\n", err)
+		return "1.0.0", "1.0.0"
+	}
+	dataMapContainer := make(map[string]interface{})
+	var outputBytes bytes.Buffer
+	err = tmpl.Execute(&outputBytes, dataMapContainer)
+	if err != nil {
+		fmt.Printf("Error in generating the version map file %v\n", err)
+		return "1.0.0", "1.0.0"
+	}
+	versionMap := make(map[string]map[string]string)
+	json.Unmarshal(outputBytes.Bytes(), &versionMap)
+	if _, isOk := versionMap[version]; !isOk {
+		fmt.Println("Invalid version number provided defaulting to 1.0.0")
+		return "1.0.0", "1.0.0"
+	}
+	coreVersion := versionMap[version]["fabricCore"]
+	thirdPartyVersion := versionMap[version]["thirdParty"]
+	return coreVersion, thirdPartyVersion
 }

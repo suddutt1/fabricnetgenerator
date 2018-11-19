@@ -1,6 +1,7 @@
 # Hyperledger Fabric Network Generator
 ### This tool generates hyperledger fabric v1.x network related files to spwan a network quickly
 Hyperledger Fabric Network Generator
+### June 30, 2018: Updated a version comapatibility map system so that it can support fabric version 1.0.0, 1.1.0, 1.0.4.  
 ### June 12, 2018: Added the option to generate ports starting from an input numnber
 1. Refer to the startPort entry in the network-config.json
 2. Tested for solo. Need to be tested for kafka based orderer options. 
