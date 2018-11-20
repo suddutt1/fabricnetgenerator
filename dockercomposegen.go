@@ -350,6 +350,8 @@ func BuildBaseImage(addCA bool, ordererMSP string) ServiceConfig {
 	ordererEnvironment = append(ordererEnvironment, "ORDERER_KAFKA_RETRY_SHORTINTERVAL=1s")
 	ordererEnvironment = append(ordererEnvironment, "ORDERER_KAFKA_RETRY_SHORTTOTAL=30s")
 	ordererEnvironment = append(ordererEnvironment, "ORDERER_KAFKA_VERBOSE=true")
+	ordererEnvironment = append(ordererEnvironment, "ORDERER_KAFKA_VERSION=0.9.0.1")
+
 	ordererEnvironment = append(ordererEnvironment, "GODEBUG=netdns=go")
 	ordererBase.Image = "hyperledger/fabric-orderer:${IMAGE_TAG}"
 	ordererBase.Environment = ordererEnvironment
