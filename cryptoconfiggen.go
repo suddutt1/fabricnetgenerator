@@ -92,8 +92,11 @@ func buildOrgConfig(orgConfig map[string]interface{}, useCA bool) map[string]int
 	template := make(map[string]interface{})
 	template["Count"] = orgConfig["peerCount"]
 	//Assuing one as of now
-	sansArray := make([]string, 1)
-	sansArray[0] = getString(orgConfig["SANS"])
+	sansInput := strings.Split(getString(orgConfig["SANS"]), ",")
+	sansArray := make([]string, len(sansInput))
+	for indx, sans := range sansInput {
+		sansArray[indx] = sans
+	}
 	template["SANS"] = sansArray
 	outputStructure["Template"] = template
 	users := make(map[string]interface{})
