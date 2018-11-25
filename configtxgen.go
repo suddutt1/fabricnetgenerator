@@ -49,7 +49,7 @@ Organizations:
 Orderer: &OrdererDefaults
         OrdererType: kafka
         Addresses:{{ range .ordererFDQNList }}
-          - {{.}}:7050{{end}}
+          - {{.}}{{end}}
         BatchTimeout: 2s
         BatchSize:
           MaxMessageCount: 10
@@ -97,8 +97,11 @@ func GenerateConfigTxGen(config []byte, filename string) bool {
 			hostName := getString(ordererConfig["ordererHostname"])
 			domainName := getString(ordererConfig["domain"])
 			listOfOrderers := make([]string, 0)
+			//Quick fix for orderer port sequence
+			port := 7050
 			for index := 0; index < getNumber(ordererConfig["haCount"]); index++ {
-				listOfOrderers = append(listOfOrderers, fmt.Sprintf("%s%d.%s", hostName, index, domainName))
+				listOfOrderers = append(listOfOrderers, fmt.Sprintf("%s%d.%s:%d", hostName, index, domainName, port))
+				port += 1000
 			}
 			dataMapContainer["ordererFDQNList"] = listOfOrderers
 		}
