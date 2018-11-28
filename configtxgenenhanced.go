@@ -63,7 +63,40 @@ Application: &ApplicationDefaults
 
     Capabilities:
         <<: *ApplicationCapabilities
+{{ if  and (eq .orderers.type "kafka")  (  .orderers.haCount ) }}
+Orderer: &OrdererDefaults
+    OrdererType: kafka
+    Addresses:{{ range .ordererFDQNList }}
+          - {{.}}{{end}}
+    BatchTimeout: 2s
+    BatchSize:
+        MaxMessageCount: 10
+        AbsoluteMaxBytes: 98 MB
+        PreferredMaxBytes: 1024 KB
+    Kafka:
+        Brokers:
+            - kafka0:9092
+            - kafka1:9092
+            - kafka2:9092
+            - kafka3:9092
+    Organizations:
 
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+        BlockValidation:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+    Capabilities:
+        <<: *OrdererCapabilities
+{{else}}
 Orderer: &OrdererDefaults
     OrdererType: solo
     Addresses:
@@ -93,7 +126,7 @@ Orderer: &OrdererDefaults
             Rule: "ANY Writers"
     Capabilities:
         <<: *OrdererCapabilities
-
+{{end}}
 Channel: &ChannelDefaults
     Policies:
         Readers:
