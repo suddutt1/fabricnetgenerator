@@ -1,31 +1,31 @@
 # Hyperledger Fabric Network Generator
 ### This tool generates hyperledger fabric v1.x network related files to spwan a network quickly
+
 Hyperledger Fabric Network Generator
-### Nov 28,2018: Updated to support Fabric 1.3 based network with solo orderer. Fabric 1.3 based kafka is yet to be developed. Support for Fabric 1.2 is skipped for now.
-### Nov 25,2018: Fixed issue on kafka configuration . Added a feature to generate a base chaincode
-### Nov 19,2018 : Fix issue for networks generated in ECS , Alibaba cloud environment
-### June 30, 2018: Updated a version comapatibility map system so that it can support fabric version 1.0.0, 1.1.0, 1.0.4.  
-### June 12, 2018: Added the option to generate ports starting from an input numnber
+--------------------------------------------
+This is a simple tool to generate a set of scripts to spawn a docker-compose based hyperledger fabric network in a linux machine. Tool takes a simple JSON as input specifying any fabric network and generates a set of shell scripts, docker-compose.yaml file to start a network, create and join channels, install and update chain codes. Tool also generates a README file to assit new users with squence of scripts to runm in order to bring a hyperledger fabric network up and running.
+The saves time for a developer to build a network without making any mistake in creating configtx.yaml, crypto-config.yaml. docker-compose files etc, those are required by a hyperledger fabric network to start.
+Moreover this tools helps developers to concentrate more on the smart contract writing and developing other integration parts rather than concentrating on the infrastructure part. 
+The future versions of this tool is aimed to support multi-vm , K8S complient and docker swarm compliant network configuration files and scripts generation. 
+
+
+
+##Updates 
+
+#### Nov 28,2018: Updated to support Fabric 1.3 based network with solo orderer. Fabric 1.3 based kafka is yet to be developed. Support for Fabric 1.2 is skipped for now.
+#### Nov 25,2018: Fixed issue on kafka configuration . Added a feature to generate a base chaincode
+#### Nov 19,2018 : Fix issue for networks generated in ECS , Alibaba cloud environment
+#### June 30, 2018: Updated a version comapatibility map system so that it can support fabric version 1.0.0, 1.1.0, 1.0.4.  
+#### June 12, 2018: Added the option to generate ports starting from an input numnber
 1. Refer to the startPort entry in the network-config.json
 2. Tested for solo. Need to be tested for kafka based orderer options. 
 3. The port numbers generated are not continous 
-### April 8, 2018: Added documentation for running the chain code after installation 
+#### April 8, 2018: Added documentation for running the chain code after installation 
+#### March 9, 2018 : Moved to HLF Version 1.1.0-rc1
+#### December 25, 2017 : Added kafka option for HA orderers
 
- #### To test the chain code 
- ```sh 
- docker exec -it cli bash # This opens the cli shell
- ```
- Inside the cli shell run the following commands
- ```sh
- . setpeer.sh Water peer1 
- export CHANNEL_NAME="airwaterchannel"
- peer chaincode query -n bt -c '{"Args":["probe",""]}' -C $CHANNEL_NAME
- ```
- 
-### March 9, 2018 : Moved to HLF Version 1.1.0-rc1
-### December 25, 2017 : Added kafka option for HA orderers
 
-## Installation 
+## Installation  ( From Source )
 1. Clone this source code
 2. Build using 
     ```sh
@@ -42,33 +42,24 @@ Hyperledger Fabric Network Generator
 5. Generate the scripts and other configs
     ```sh
     fabricnetgen <path to the network-config json file name>
-    ```
-6. After generating the network elements run the following commands to build and start the network. Remember that all the artifacts would be generated in the directory from where fabricnetgen command is invoked.
+    
+ 
+     ```
+6. Follow the instructions generated in README.txt file.
+
+## Installation  ( Binary )
+1. Download latest fabricnetgen from the releases tab
+2. Change the permission to make it an executable 
+ ```sh
+    chmod a+x fabricnetgen
+ ```  
+3. Put the fabricnetgen some where so that it is in PATH  
+4. Create a network-config.json ( Refer to the example given in the respository).
+5. Generate the scripts and other configs
     ```sh
-    . downloadbin.sh # One time command
-    . generateartifacts.sh # One time to generate the crypto materials
-    mkdir -p chaincode/github.com/<chain code package name> # If you have more that one chain code , then you need to repeat this step for each chain code pakage.
+    fabricnetgen <path to the network-config json file name>
     
-    docker-compose up -d # To start the network
-    docker exec -it cli bash -e ./buildandjoinchannel.sh # To build and join channel
-    docker exec -it cli bash -e ./<chaincode id>_install.sh # To install the chain code
-    
-    ```
+ 
+     ```
+6. Follow the instructions generated in README.txt file.
 
-## TODO
-1. Need to document the output
-2. Add instructions at the end of generation on the console
-
-## Tool download ( Not required separately anymore)
-
-```sh
-export VERSION=1.0.4
-export ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')-$(uname -m | sed 's/x86_64/amd64/g')" | awk '{print tolower($0)}')
-#Set MARCH variable i.e ppc64le,s390x,x86_64,i386
-MARCH=`uname -m`
-echo "===> Downloading platform binaries"
-curl https://nexus.hyperledger.org/content/repositories/releases/org/hyperledger/fabric/hyperledger-fabric/${ARCH}-${VERSION}/hyperledger-fabric-${ARCH}-${VERSION}.tar.gz | tar xz
-
-
-
-```
