@@ -36,9 +36,10 @@ func GenerateCrytoConfig(config []byte, filePath string) bool {
 		fmt.Println("No organizations specified")
 		return false
 	}
+	addNodeOU := IsVersionAbove(rootConfig, "1.3.0")
 	peerOrgs := make([]map[string]interface{}, 0)
 	for _, orgConfig := range orgs {
-		peerOrgs = append(peerOrgs, buildOrgConfig(getMap(orgConfig), useCA))
+		peerOrgs = append(peerOrgs, buildOrgConfig(getMap(orgConfig), useCA, addNodeOU))
 	}
 	cryptoConfig["PeerOrgs"] = peerOrgs
 	outBytes, _ := yaml.Marshal(cryptoConfig)
@@ -79,10 +80,13 @@ func buildOrderConfig(ordererConfig map[string]interface{}) map[string]interface
 	outputStructure["Specs"] = specs
 	return outputStructure
 }
-func buildOrgConfig(orgConfig map[string]interface{}, useCA bool) map[string]interface{} {
+func buildOrgConfig(orgConfig map[string]interface{}, useCA, addNodeOU bool) map[string]interface{} {
 	outputStructure := make(map[string]interface{})
 	outputStructure["Name"] = getString(orgConfig["name"])
 	outputStructure["Domain"] = getString(orgConfig["domain"])
+	if addNodeOU {
+		outputStructure["EnableNodeOUs"] = true
+	}
 	if useCA == true {
 		caTemplate := make(map[string]string)
 		caTemplate["Hostname"] = "ca"

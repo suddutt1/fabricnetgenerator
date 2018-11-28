@@ -1,3 +1,4 @@
 {
-    "workbench.colorTheme": "Solarized Dark"
+    "workbench.colorTheme": "Solarized Dark",
+    "editor.renderWhitespace": "all"
 }

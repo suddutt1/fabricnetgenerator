@@ -69,9 +69,9 @@ func GenerateChainCodeScripts(config []byte, path string) bool {
 				shFileInstall.WriteString(setChannel)
 				shFileUpdateCC.WriteString("\t" + lineToWrite)
 				shFileUpdateCC.WriteString(setChannel)
-				exeCommand := fmt.Sprintf("peer chaincode install -n %s -v %s -p %s\n", ccID, version, src)
+				exeCommand := fmt.Sprintf("peer chaincode install -n %s -v %s -l golang -p  %s\n", ccID, version, src)
 				shFileInstall.WriteString(exeCommand)
-				exeUpdCommand := fmt.Sprintf("peer chaincode install -n %s -v %s -p %s\n", ccID, "$1", src)
+				exeUpdCommand := fmt.Sprintf("peer chaincode install -n %s -v %s -l golang -p  %s\n", ccID, "$1", src)
 				shFileUpdateCC.WriteString("\t" + exeUpdCommand)
 			}
 			policy = policy + ",'" + (mspMap[getString(participant)]) + ".member'"

@@ -8,7 +8,7 @@ import (
 	"text/template"
 )
 
-const _OrdererTemplate = `
+const _configTxTemplate = `
 Profiles:
 
     OrdererGenesis:
@@ -84,13 +84,19 @@ Application: &ApplicationDefaults
 
 func GenerateConfigTxGen(config []byte, filename string) bool {
 
-	tmpl, err := template.New("configtxsolo").Parse(_OrdererTemplate)
+	dataMapContainer := make(map[string]interface{})
+	json.Unmarshal(config, &dataMapContainer)
+	configTxTemplate := _configTxTemplate
+	if IsVersionAbove(dataMapContainer, "1.3.0") {
+		fmt.Println("Generation 1.3 compatible configtxgen")
+		configTxTemplate = _configTxTemplateV13
+	}
+	tmpl, err := template.New("configtxsolo").Parse(configTxTemplate)
 	if err != nil {
 		fmt.Printf("Error in reading template %v\n", err)
 		return false
 	}
-	dataMapContainer := make(map[string]interface{})
-	json.Unmarshal(config, &dataMapContainer)
+
 	ordererConfig := getMap(dataMapContainer["orderers"])
 	if ifExists(ordererConfig, "type") && ifExists(ordererConfig, "haCount") {
 		if getString(ordererConfig["type"]) == "kafka" {

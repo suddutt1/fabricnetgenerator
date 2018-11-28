@@ -116,6 +116,7 @@ cd $PWD
 const _BuildChannelScript = `
 #!/bin/bash -e
 {{ $orderer:= .ordererURL}}
+{{ $timeOut:= .timeout}}
 {{ $root := . }}
 {{range .channels}}
 {{ $channelId := print .channelName "channel" | ToLower }}
@@ -123,7 +124,7 @@ echo "Building channel for {{print $channelId}}"
 {{$firstOrg := (index .orgs 0) }}
 . setpeer.sh {{$firstOrg}} peer0
 export CHANNEL_NAME="{{print $channelId }}"
-peer channel create -o {{ print $orderer }} -c $CHANNEL_NAME -f ./{{print $channelId ".tx"}} --tls true --cafile $ORDERER_CA -t 10000
+peer channel create -o {{ print $orderer }} -c $CHANNEL_NAME -f ./{{print $channelId ".tx"}} --tls true --cafile $ORDERER_CA -t {{$timeOut}}
 {{ range $index,$orgName :=.orgs}}{{$orgConfig :=  index $root $orgName }}
 {{ range $i,$peerId:=$orgConfig.peerNames }}
 . setpeer.sh {{$orgName}} {{$peerId}}
@@ -148,8 +149,8 @@ rm *_update.sh
 `
 const _SetEnv = `
 #!/bin/bash
-export IMAGE_TAG="x86_64-{{.fabricVersion}}"
-export TP_IMAGE_TAG="x86_64-{{.thirdPartyVersion}}"
+export IMAGE_TAG="{{.fabricVersion}}"
+export TP_IMAGE_TAG="{{.thirdPartyVersion}}"
 
 `
 const _DOTENV = `
@@ -159,24 +160,21 @@ COMPOSE_PROJECT_NAME=bc
 const _DOWNLOAD_SCRIPTS = `
 #!/bin/bash
 
-export VERSION={{.fabricVersion}}
+export VERSION={{.downloadVersion}}
 export ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')-$(uname -m | sed 's/x86_64/amd64/g')" | awk '{print tolower($0)}')
-#Set MARCH variable i.e ppc64le,s390x,x86_64,i386
-MARCH="x86_64"
-
-
-: ${CA_TAG:="$MARCH-$VERSION"}
-: ${FABRIC_TAG:="$MARCH-$VERSION"}
 
 echo "===> Downloading platform binaries"
-curl https://nexus.hyperledger.org/content/repositories/releases/org/hyperledger/fabric/hyperledger-fabric/${ARCH}-${VERSION}/hyperledger-fabric-${ARCH}-${VERSION}.tar.gz | tar xz
+export URL="https://nexus.hyperledger.org/content/repositories/releases/org/hyperledger/fabric/hyperledger-fabric/${ARCH}-${VERSION}/hyperledger-fabric-${ARCH}-${VERSION}.tar.gz"
+echo $URL
+curl  $URL| tar xz
 
 `
 const _VERSION_COMP_MAP = `
 {
-	"1.0.0":{ "fabricCore":"1.0.0","thirdParty":"1.0.0"},
-	"1.0.4":{ "fabricCore":"1.0.4","thirdParty":"1.0.4"},
-	"1.1.0":{ "fabricCore":"1.1.0","thirdParty":"1.0.6"}
+	"1.0.0":{ "fabricCore":"x86_64-1.0.0","thirdParty":"x86_64-1.0.0"},
+	"1.0.4":{ "fabricCore":"x86_64-1.0.4","thirdParty":"x86_64-1.0.4"},
+	"1.1.0":{ "fabricCore":"x86_64-1.1.0","thirdParty":"x86_64-1.0.6"},
+	"1.3.0":{ "fabricCore":"1.3.0","thirdParty":"0.4.13"}
 	
 }	
 
@@ -193,15 +191,15 @@ func GenerateOtherScripts(config []byte, path string) bool {
 	}
 	dataMapContainer := make(map[string]interface{})
 	json.Unmarshal(config, &dataMapContainer)
+	version, _ := dataMapContainer["fabricVersion"].(string)
 	if ifExists(dataMapContainer, "fabricVersion") {
-		version, _ := dataMapContainer["fabricVersion"].(string)
 		core, thridParty := GetVersions(version)
 		dataMapContainer["fabricVersion"] = core
 		dataMapContainer["thirdPartyVersion"] = thridParty
 
 	} else {
-		dataMapContainer["fabricVersion"] = "1.1.0"
-		dataMapContainer["thirdPartyVersion"] = "1.0.6"
+		dataMapContainer["fabricVersion"] = "x86_64-1.1.0"
+		dataMapContainer["thirdPartyVersion"] = "x86_64-1.0.6"
 	}
 
 	var outputBytes bytes.Buffer
@@ -244,7 +242,7 @@ func GenerateOtherScripts(config []byte, path string) bool {
 		fmt.Printf("Error in reading template %v\n", err)
 		return false
 	}
-
+	dataMapContainer["downloadVersion"] = version
 	var outputBytes4 bytes.Buffer
 	err = tmpl.Execute(&outputBytes4, dataMapContainer)
 	if err != nil {
@@ -339,6 +337,13 @@ func GenerateBuildAndJoinChannelScript(config []byte, filename string) bool {
 	} else {
 		channelMap["ordererURL"] = fmt.Sprintf("%s.%s:7050", getString(ordererConfig["ordererHostname"]), getString(ordererConfig["domain"]))
 	}
+
+	timeOut := "1000"
+	if IsVersionAbove(dataMapContainer, "1.3.0") {
+		fmt.Println("Generation 1.3 compatible build&joinchannel")
+		timeOut = "1000s"
+	}
+	channelMap["timeout"] = timeOut
 	var outputBytes bytes.Buffer
 	err = tmpl.Execute(&outputBytes, channelMap)
 	if err != nil {
@@ -352,22 +357,28 @@ func GetVersions(version string) (string, string) {
 	tmpl, err := template.New("versionMap").Parse(_VERSION_COMP_MAP)
 	if err != nil {
 		fmt.Printf("Error in reading template %v\n", err)
-		return "1.0.0", "1.0.0"
+		return "x86_64-1.0.0", "x86_64-1.0.0"
 	}
 	dataMapContainer := make(map[string]interface{})
 	var outputBytes bytes.Buffer
 	err = tmpl.Execute(&outputBytes, dataMapContainer)
 	if err != nil {
 		fmt.Printf("Error in generating the version map file %v\n", err)
-		return "1.0.0", "1.0.0"
+		return "x86_64-1.0.0", "x86_64-1.0.0"
 	}
 	versionMap := make(map[string]map[string]string)
 	json.Unmarshal(outputBytes.Bytes(), &versionMap)
 	if _, isOk := versionMap[version]; !isOk {
 		fmt.Println("Invalid version number provided defaulting to 1.0.0")
-		return "1.0.0", "1.0.0"
+		return "x86_64-1.0.0", "x86_64-1.0.0"
 	}
 	coreVersion := versionMap[version]["fabricCore"]
 	thirdPartyVersion := versionMap[version]["thirdParty"]
 	return coreVersion, thirdPartyVersion
+}
+
+func IsVersionAbove(config map[string]interface{}, version string) bool {
+	confVersion := getString(config["fabricVersion"])
+
+	return len(version) > 0 && strings.Compare(confVersion, version) >= 0
 }
