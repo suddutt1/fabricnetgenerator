@@ -10,7 +10,7 @@ The future versions of this tool is aimed to support multi-vm , K8S complient an
 
 
 
-##Updates 
+## Updates 
 
 #### Nov 28,2018: Updated to support Fabric 1.3 based network with solo orderer. Fabric 1.3 based kafka is yet to be developed. Support for Fabric 1.2 is skipped for now.
 #### Nov 25,2018: Fixed issue on kafka configuration . Added a feature to generate a base chaincode
