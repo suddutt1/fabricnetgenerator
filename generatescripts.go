@@ -53,7 +53,11 @@ function generateArtifacts() {
 	
 		$CONFIGTXGEN -profile OrdererGenesis -outputBlock ./genesis.block
 		{{range .channels}}{{$chName := .channelName }}{{$channelId:= $chName | ToLower }}
-        $CONFIGTXGEN -profile {{print $chName "Channel"}} -outputCreateChannelTx ./{{print $channelId "channel.tx" }} -channelID {{ print $channelId "channel"}}
+		$CONFIGTXGEN -profile {{print $chName "Channel"}} -outputCreateChannelTx ./{{print $channelId "channel.tx" }} -channelID {{ print $channelId "channel"}}
+		{{range $org:= .orgs}}
+		echo {{print "\"Generating anchor peers tx files for  " $org "\""}}
+		$CONFIGTXGEN -profile {{print $chName "Channel"}} -outputAnchorPeersUpdate  ./{{print $channelId "channel" $org "MSPAnchor.tx" }} -channelID {{ print $channelId "channel"}} -asOrg {{print $org "MSP" }}
+		{{end}}
 		{{end}}
 
 }
@@ -88,7 +92,12 @@ function generateArtifacts() {
 	
 		$CONFIGTXGEN -profile OrdererGenesis -outputBlock ./genesis.block
 		{{range .channels}}{{$chName := .channelName }}{{$channelId:= $chName | ToLower }}
-        $CONFIGTXGEN -profile {{print $chName "Channel"}} -outputCreateChannelTx ./{{print $channelId "channel.tx" }} -channelID {{ print $channelId "channel"}}
+		$CONFIGTXGEN -profile {{print $chName "Channel"}} -outputCreateChannelTx ./{{print $channelId "channel.tx" }} -channelID {{ print $channelId "channel"}}
+		{{range $org:= .orgs}}
+		echo {{print "\"Generating anchor peers tx files for  " $org "\""}}
+		$CONFIGTXGEN -profile {{print $chName "Channel"}} -outputAnchorPeersUpdate  ./{{print $channelId "channel" $org "MSPAnchor.tx" }} -channelID {{ print $channelId "channel"}} -asOrg {{print $org "MSP" }}
+		{{end}}
+
 		{{end}}
 
 }
@@ -119,18 +128,31 @@ const _BuildChannelScript = `
 {{ $timeOut:= .timeout}}
 {{ $root := . }}
 {{range .channels}}
-{{ $channelId := print .channelName "channel" | ToLower }}
-echo "Building channel for {{print $channelId}}" 
-{{$firstOrg := (index .orgs 0) }}
-. setpeer.sh {{$firstOrg}} peer0
-export CHANNEL_NAME="{{print $channelId }}"
-peer channel create -o {{ print $orderer }} -c $CHANNEL_NAME -f ./{{print $channelId ".tx"}} --tls true --cafile $ORDERER_CA -t {{$timeOut}}
-{{ range $index,$orgName :=.orgs}}{{$orgConfig :=  index $root $orgName }}
-{{ range $i,$peerId:=$orgConfig.peerNames }}
-. setpeer.sh {{$orgName}} {{$peerId}}
-export CHANNEL_NAME="{{print $channelId }}"
-peer channel join -b $CHANNEL_NAME.block
-{{end}}{{end}}{{end}}
+	{{ $channelId := print .channelName "channel" | ToLower }}
+	echo "Building channel for {{print $channelId}}" 
+	{{$firstOrg := (index .orgs 0) }}
+	. setpeer.sh {{$firstOrg}} peer0
+	export CHANNEL_NAME="{{print $channelId }}"
+	peer channel create -o {{ print $orderer }} -c $CHANNEL_NAME -f ./{{print $channelId ".tx"}} --tls true --cafile $ORDERER_CA -t {{$timeOut}}
+	{{ range $index,$orgName :=.orgs}}
+		{{$orgConfig :=  index $root $orgName }}
+        {{ range $i,$peerId:=$orgConfig.peerNames }}
+            . setpeer.sh {{$orgName}} {{$peerId}}
+            export CHANNEL_NAME="{{print $channelId }}"
+			peer channel join -b $CHANNEL_NAME.block
+		{{end}}
+	{{end}}
+	{{ range $index,$orgName :=.orgs}}
+	{{$orgConfig :=  index $root $orgName }}
+	{{ range $i,$peerId:=$orgConfig.peerNames }}
+		. setpeer.sh {{$orgName}} {{$peerId}}
+		export CHANNEL_NAME="{{print $channelId }}"
+		peer channel update -o  {{ print $orderer }} -c $CHANNEL_NAME -f ./{{print $channelId  $orgName "MSPAnchor.tx" }} --tls --cafile $ORDERER_CA 
+	{{end}}
+{{end}}
+
+{{end}}
+
 `
 const _CleanUp = `
 #!/bin/bash
