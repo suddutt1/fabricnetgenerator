@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 type PortRegulator struct {
@@ -276,12 +276,14 @@ func BuildCAImage(cryptoBasePath, domainName, orgname string, ports []string, al
 	peerFQDN := "ca." + domainName
 
 	peerEnvironment := make([]string, 0)
+	peerEnvironment = append(peerEnvironment, "FABRIC_CA_SERVER_CA_NAME="+orgname+"CA")
 	peerEnvironment = append(peerEnvironment, "FABRIC_CA_SERVER_CA_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca."+domainName+"-cert.pem")
 	peerEnvironment = append(peerEnvironment, "FABRIC_CA_SERVER_CA_KEYFILE=/etc/hyperledger/fabric-ca-server-config/"+strings.ToUpper(orgname)+"_PRIVATE_KEY")
 	peerEnvironment = append(peerEnvironment, "FABRIC_CA_SERVER_TLS_CERTFILE=/etc/hyperledger/fabric-ca-server-config/ca."+domainName+"-cert.pem")
 	peerEnvironment = append(peerEnvironment, "FABRIC_CA_SERVER_TLS_KEYFILE=/etc/hyperledger/fabric-ca-server-config/"+strings.ToUpper(orgname)+"_PRIVATE_KEY")
 	vols := make([]string, 0)
 	vols = append(vols, cryptoBasePath+"/crypto-config/peerOrganizations/"+domainName+"/ca/"+":/etc/hyperledger/fabric-ca-server-config")
+	vols = append(vols, "./"+":/opt/ws")
 
 	var networks = make([]string, 0)
 	networks = append(networks, "fabricnetwork")
@@ -293,6 +295,7 @@ func BuildCAImage(cryptoBasePath, domainName, orgname string, ports []string, al
 	container.Networks = networks
 	container.Ports = ports
 	container.Extends = extnds
+	container.WorkingDir = "/opt/ws"
 	markPorts(ports, allPortsMap, peerFQDN)
 	return container
 }

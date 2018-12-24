@@ -21,7 +21,6 @@ func GenerateReadme(config []byte, path string) {
 	buffer.WriteString(" . ./generateartifacts.sh \n\n")
 
 	buffer.WriteString("\n 3. Create the chain code directiory.\n")
-	buffer.WriteString("  cd <network> \n")
 
 	configMap := make(map[string]interface{})
 	//chain code

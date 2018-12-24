@@ -167,6 +167,7 @@ rm setpeer.sh
 rm buildandjoinchannel.sh
 rm *_install.sh
 rm *_update.sh
+rm add_affi*.sh
 
 `
 const _SetEnv = `
@@ -200,6 +201,15 @@ const _VERSION_COMP_MAP = `
 	
 }	
 
+`
+const _REMOVE_IMAGES = `
+#!/bin/bash
+docker rmi -f {{ "docker images dev* -aq" | ToCMDString}}
+`
+const _CREATE_AFFILIATION = `
+#!/bin/bash
+fabric-ca-client enroll  -u https://admin:adminpw@ca.{{.domain}}:7054 --tls.certfiles /etc/hyperledger/fabric-ca-server-config/ca.{{.domain}}-cert.pem 
+fabric-ca-client affiliation add {{.orgName | ToLower }}  -u https://admin:adminpw@ca.{{.domain}}:7054 --tls.certfiles /etc/hyperledger/fabric-ca-server-config/ca.{{.domain}}-cert.pem 
 `
 
 func ToCMDString(input string) string {
@@ -272,7 +282,27 @@ func GenerateOtherScripts(config []byte, path string) bool {
 		return false
 	}
 	ioutil.WriteFile(path+"downloadbin.sh", outputBytes4.Bytes(), 0777)
+	funcMap := template.FuncMap{
+		"ToCMDString": ToCMDString,
+		"ToLower":     strings.ToLower,
+		"ToUpper":     strings.ToUpper,
+	}
 
+	tmpl, err = template.New("rmImages").Funcs(funcMap).Parse(_REMOVE_IMAGES)
+	if err != nil {
+		fmt.Printf("Error in reading template %v\n", err)
+		return false
+	}
+
+	var outputBytes5 bytes.Buffer
+	err = tmpl.Execute(&outputBytes5, dataMapContainer)
+	if err != nil {
+		fmt.Printf("Error in generating the generateArtifacts file %v\n", err)
+		return false
+	}
+	ioutil.WriteFile(path+"removeImages.sh", outputBytes5.Bytes(), 0777)
+
+	GenerateAffiliationScripts(config, path)
 	return true
 }
 func GenerateGenerateArtifactsScript(config []byte, filename string) bool {
@@ -403,4 +433,36 @@ func IsVersionAbove(config map[string]interface{}, version string) bool {
 	confVersion := getString(config["fabricVersion"])
 
 	return len(version) > 0 && strings.Compare(confVersion, version) >= 0
+}
+func GenerateAffiliationScripts(config []byte, path string) {
+	funcMap := template.FuncMap{
+
+		"ToLower": strings.ToLower,
+	}
+	networkConfig := make(map[string]interface{})
+	json.Unmarshal(config, &networkConfig)
+	addCA := getBoolean(networkConfig["addCA"])
+	if addCA {
+		orgConfigs, _ := networkConfig["orgs"].([]interface{})
+		tmpl, err := template.New("addAffiliation").Funcs(funcMap).Parse(_CREATE_AFFILIATION)
+		if err != nil {
+			fmt.Printf("Error in reading template %v\n", err)
+			return
+		}
+
+		for _, org := range orgConfigs {
+			orgConfig, _ := org.(map[string]interface{})
+			templateData := make(map[string]string)
+			templateData["domain"] = getString(orgConfig["domain"])
+			templateData["orgName"] = getString(orgConfig["name"])
+			var outputBytes bytes.Buffer
+			err = tmpl.Execute(&outputBytes, templateData)
+			if err != nil {
+				fmt.Printf("Error in generating the generateArtifacts file %v\n", err)
+				return
+			}
+			fileName := fmt.Sprintf("add_affiliation_%s.sh", strings.ToLower(templateData["orgName"]))
+			ioutil.WriteFile(path+fileName, outputBytes.Bytes(), 0777)
+		}
+	}
 }
