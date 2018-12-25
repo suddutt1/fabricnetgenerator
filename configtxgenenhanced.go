@@ -25,10 +25,10 @@ Organizations:
             Policies:
                 Readers:
                     Type: Signature
-                    Rule: "OR('{{.mspID}}.admin', '{{.mspID}}.peer', '{{.mspID}}.client')"
+                    Rule: "OR('{{.mspID}}.admin', '{{.mspID}}.peer', '{{.mspID}}.client','{{.mspID}}.member' )"
                 Writers:
                     Type: Signature
-                    Rule: "OR('{{.mspID}}.admin', '{{.mspID}}.client')"
+                    Rule: "OR('{{.mspID}}.admin', '{{.mspID}}.client','{{.mspID}}.member' )"
                 Admins:
                     Type: Signature
                     Rule: "OR('{{.mspID}}.admin')"
@@ -147,20 +147,25 @@ Profiles:
             <<: *OrdererDefaults
             Organizations:
                 - *OrdererOrg
+            Capabilities:
+                <<: *OrdererCapabilities 
         Consortiums:
             {{.consortium}}:
                 Organizations:
                    {{ range .orgs}}- *{{ .name}}Org
                    {{end}}
         {{ $x :=.consortium}}
-        {{range .channels}}
-    {{.channelName}}Channel:
+    {{range .channels}}
+    {{.channelName}}channel:
         Consortium: {{$x}}
         Application:
             <<: *ApplicationDefaults
             Organizations:
-                {{range $index,$var := .orgs}}- *{{$var}}Org
-                {{end}}
-        {{end}}
+              {{range $index,$var := .orgs}}- *{{$var}}Org
+              {{end}}
+            Capabilities:
+              <<: *ApplicationCapabilities
+    {{end}}
+        
 
 `

@@ -51,12 +51,12 @@ function generateArtifacts() {
         
         echo " ************ Generating tx files ************ "
 	
-		$CONFIGTXGEN -profile OrdererGenesis -outputBlock ./genesis.block
+		$CONFIGTXGEN -profile OrdererGenesis -outputBlock ./genesis.block  -channelID genesischannel
 		{{range .channels}}{{$chName := .channelName }}{{$channelId:= $chName | ToLower }}
-		$CONFIGTXGEN -profile {{print $chName "Channel"}} -outputCreateChannelTx ./{{print $channelId "channel.tx" }} -channelID {{ print $channelId "channel"}}
+		$CONFIGTXGEN -profile {{print $chName "channel"}} -outputCreateChannelTx ./{{print $channelId "channel.tx" }} -channelID {{ print $channelId "channel"}}
 		{{range $org:= .orgs}}
 		echo {{print "\"Generating anchor peers tx files for  " $org "\""}}
-		$CONFIGTXGEN -profile {{print $chName "Channel"}} -outputAnchorPeersUpdate  ./{{print $channelId "channel" $org "MSPAnchor.tx" }} -channelID {{ print $channelId "channel"}} -asOrg {{print $org "MSP" }}
+		$CONFIGTXGEN -profile {{print $chName "channel"}} -outputAnchorPeersUpdate  ./{{print $channelId "channel" $org "MSPAnchor.tx" }} -channelID {{ print $channelId "channel"}} -asOrg {{print $org "MSP" }}
 		{{end}}
 		{{end}}
 
@@ -197,7 +197,7 @@ const _VERSION_COMP_MAP = `
 	"1.0.0":{ "fabricCore":"x86_64-1.0.0","thirdParty":"x86_64-1.0.0"},
 	"1.0.4":{ "fabricCore":"x86_64-1.0.4","thirdParty":"x86_64-1.0.4"},
 	"1.1.0":{ "fabricCore":"x86_64-1.1.0","thirdParty":"x86_64-1.0.6"},
-	"1.3.0":{ "fabricCore":"1.3.0","thirdParty":"0.4.13"}
+	"1.3.0":{ "fabricCore":"1.3.0","thirdParty":"0.4.14"}
 	
 }	
 
