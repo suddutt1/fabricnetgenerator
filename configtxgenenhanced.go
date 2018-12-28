@@ -25,10 +25,10 @@ Organizations:
             Policies:
                 Readers:
                     Type: Signature
-                    Rule: "OR('{{.mspID}}.admin', '{{.mspID}}.peer', '{{.mspID}}.client','{{.mspID}}.member' )"
+                    Rule: "OR('{{.mspID}}.admin', '{{.mspID}}.peer', '{{.mspID}}.client' )"
                 Writers:
                     Type: Signature
-                    Rule: "OR('{{.mspID}}.admin', '{{.mspID}}.client','{{.mspID}}.member' )"
+                    Rule: "OR('{{.mspID}}.admin', '{{.mspID}}.client' )"
                 Admins:
                     Type: Signature
                     Rule: "OR('{{.mspID}}.admin')"
@@ -143,6 +143,7 @@ Channel: &ChannelDefaults
 
 Profiles:
     OrdererGenesis:
+        <<: *ChannelDefaults
         Orderer:
             <<: *OrdererDefaults
             Organizations:
