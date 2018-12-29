@@ -157,7 +157,7 @@ Profiles:
                    {{end}}
         {{ $x :=.consortium}}
     {{range .channels}}
-    {{.channelName}}channel:
+    {{.channelName}}Channel:
         Consortium: {{$x}}
         Application:
             <<: *ApplicationDefaults
