@@ -53,10 +53,10 @@ function generateArtifacts() {
 	
 		$CONFIGTXGEN -profile OrdererGenesis -outputBlock ./genesis.block  -channelID genesischannel
 		{{range .channels}}{{$chName := .channelName }}{{$channelId:= $chName | ToLower }}
-		$CONFIGTXGEN -profile {{print $chName "channel"}} -outputCreateChannelTx ./{{print $channelId "channel.tx" }} -channelID {{ print $channelId "channel"}}
+		$CONFIGTXGEN -profile {{print $chName "Channel"}} -outputCreateChannelTx ./{{print $channelId "channel.tx" }} -channelID {{ print $channelId "channel"}}
 		{{range $org:= .orgs}}
 		echo {{print "\"Generating anchor peers tx files for  " $org "\""}}
-		$CONFIGTXGEN -profile {{print $chName "channel"}} -outputAnchorPeersUpdate  ./{{print $channelId "channel" $org "MSPAnchor.tx" }} -channelID {{ print $channelId "channel"}} -asOrg {{print $org "MSP" }}
+		$CONFIGTXGEN -profile {{print $chName "Channel"}} -outputAnchorPeersUpdate  ./{{print $channelId "channel" $org "MSPAnchor.tx" }} -channelID {{ print $channelId "channel"}} -asOrg {{print $org "MSP" }}
 		{{end}}
 		{{end}}
 
