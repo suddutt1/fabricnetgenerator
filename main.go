@@ -9,14 +9,18 @@ import (
 
 func main() {
 
-	flag.Usage = toolUsage
+	//flag.Usage = toolUsage
 	action := "generateNetwork"
-	genExample := flag.Bool("ex", false, "Generate example chaincode")
+	genExample := flag.Bool("ccex", false, "Generate example chaincode")
 	huntUsers := flag.Bool("lu", false, "Lookup crypto-config directory for pregenerated users and generates config snippet")
 	isJSONOutput := flag.Bool("json", false, "Generate config in json format")
+	genNetconfg := flag.Bool("ncex", false, "Generate an example network-config.json")
 	flag.Parse()
 	if *genExample {
 		action = "generateExample"
+	}
+	if *genNetconfg {
+		action = "generateConfExample"
 	}
 	if *huntUsers {
 		action = "huntUsers"
@@ -40,6 +44,8 @@ func main() {
 		GenerateNetworkItems(configBytes, ".")
 	case "generateExample":
 		GenerateExampleCC("v1", "./")
+	case "generateConfExample":
+		GenerateExampleConfig("v1", "./")
 	case "huntUsers":
 		cryptoDirectory := "."
 		if len(flag.Args()) > 0 {

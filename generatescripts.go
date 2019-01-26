@@ -172,8 +172,11 @@ rm add_affi*.sh
 `
 const _SetEnv = `
 #!/bin/bash
-export IMAGE_TAG="{{.fabricVersion}}"
-export TP_IMAGE_TAG="{{.thirdPartyVersion}}"
+export IMAGE_TAG="{{.fabricCore}}"
+export COUCH_TAG="{{.couch}}"
+export ZK_TAG="{{.zk}}"
+export KAFKA_TAG="{{.kafka}}"
+
 
 `
 const _DOTENV = `
@@ -194,10 +197,10 @@ curl  $URL| tar xz
 `
 const _VERSION_COMP_MAP = `
 {
-	"1.0.0":{ "fabricCore":"x86_64-1.0.0","thirdParty":"x86_64-1.0.0"},
-	"1.0.4":{ "fabricCore":"x86_64-1.0.4","thirdParty":"x86_64-1.0.4"},
-	"1.1.0":{ "fabricCore":"x86_64-1.1.0","thirdParty":"x86_64-1.0.6"},
-	"1.3.0":{ "fabricCore":"1.3.0","thirdParty":"0.4.14"}
+	"1.0.0":{ "fabricCore":"x86_64-1.0.0","couch":"x86_64-1.0.0","zk":"x86_64-1.0.0","kafka":"x86_64-1.0.0"},
+	"1.0.4":{ "fabricCore":"x86_64-1.0.4","couch":"x86_64-1.0.4","zk":"x86_64-1.0.4","kafka":"x86_64-1.0.4"},
+	"1.1.0":{ "fabricCore":"x86_64-1.1.0","couch":"0.4.7","zk":"x86_64-1.0.6","kafka":"x86_64-1.0.6"},
+	"1.3.0":{ "fabricCore":"1.3.0","thirdParty":"0.4.14","couch":"0.4.14","zk":"0.4.14","kafka":"0.4.14"}
 	
 }	
 
@@ -221,18 +224,9 @@ func GenerateOtherScripts(config []byte, path string) bool {
 		fmt.Printf("Error in reading template %v\n", err)
 		return false
 	}
+
 	dataMapContainer := make(map[string]interface{})
 	json.Unmarshal(config, &dataMapContainer)
-	version, _ := dataMapContainer["fabricVersion"].(string)
-	if ifExists(dataMapContainer, "fabricVersion") {
-		core, thridParty := GetVersions(version)
-		dataMapContainer["fabricVersion"] = core
-		dataMapContainer["thirdPartyVersion"] = thridParty
-
-	} else {
-		dataMapContainer["fabricVersion"] = "x86_64-1.1.0"
-		dataMapContainer["thirdPartyVersion"] = "x86_64-1.0.6"
-	}
 
 	var outputBytes bytes.Buffer
 	err = tmpl.Execute(&outputBytes, dataMapContainer)
@@ -241,14 +235,18 @@ func GenerateOtherScripts(config []byte, path string) bool {
 		return false
 	}
 	ioutil.WriteFile(path+".env", outputBytes.Bytes(), 0666)
+	versionMap := GetVersions("1.0.0")
+	version, _ := dataMapContainer["fabricVersion"].(string)
+	if ifExists(dataMapContainer, "fabricVersion") {
+		versionMap = GetVersions(version)
+	}
 	tmpl, err = template.New("setenv").Parse(_SetEnv)
 	if err != nil {
 		fmt.Printf("Error in reading template %v\n", err)
 		return false
 	}
-
 	var outputBytes2 bytes.Buffer
-	err = tmpl.Execute(&outputBytes2, dataMapContainer)
+	err = tmpl.Execute(&outputBytes2, versionMap)
 	if err != nil {
 		fmt.Printf("Error in generating the setenv.sh file %v\n", err)
 		return false
@@ -405,30 +403,17 @@ func GenerateBuildAndJoinChannelScript(config []byte, filename string) bool {
 	ioutil.WriteFile(filename, outputBytes.Bytes(), 0777)
 	return true
 }
-func GetVersions(version string) (string, string) {
-	tmpl, err := template.New("versionMap").Parse(_VERSION_COMP_MAP)
-	if err != nil {
-		fmt.Printf("Error in reading template %v\n", err)
-		return "x86_64-1.0.0", "x86_64-1.0.0"
-	}
-	dataMapContainer := make(map[string]interface{})
-	var outputBytes bytes.Buffer
-	err = tmpl.Execute(&outputBytes, dataMapContainer)
-	if err != nil {
-		fmt.Printf("Error in generating the version map file %v\n", err)
-		return "x86_64-1.0.0", "x86_64-1.0.0"
-	}
+func GetVersions(version string) map[string]string {
 	versionMap := make(map[string]map[string]string)
-	json.Unmarshal(outputBytes.Bytes(), &versionMap)
-	if _, isOk := versionMap[version]; !isOk {
+	json.Unmarshal([]byte(_VERSION_COMP_MAP), &versionMap)
+	if details, isOk := versionMap[version]; !isOk {
 		fmt.Println("Invalid version number provided defaulting to 1.0.0")
-		return "x86_64-1.0.0", "x86_64-1.0.0"
+		return versionMap["1.0.0"]
+	} else {
+		return details
 	}
-	coreVersion := versionMap[version]["fabricCore"]
-	thirdPartyVersion := versionMap[version]["thirdParty"]
-	return coreVersion, thirdPartyVersion
-}
 
+}
 func IsVersionAbove(config map[string]interface{}, version string) bool {
 	confVersion := getString(config["fabricVersion"])
 
