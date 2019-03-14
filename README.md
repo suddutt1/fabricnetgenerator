@@ -11,6 +11,7 @@ The future versions of this tool is aimed to support multi-vm , K8S complient an
 
 
 ## Updates 
+#### March 14, 2018: Added extra_hosts attribute same entries 
 #### Dec 28,2018: Fixed issues with Fabric version 1.3 . Updated code for some new features like pre-generated user lookup and ca-affiliate-add shell scripts 
 #### Dec 25,2018: Version 1.3 issues are resolved. Now you may generate and operate a hyperledger version 1.3 network
 #### Dec 24,2018: Custom affiliation scripts added.Fixed other CA related issues  

@@ -28,10 +28,11 @@ type Container struct {
 	WorkingDir    string            `yaml:"working_dir,omitempty"`
 	Command       string            `yaml:"command,omitempty"`
 
-	Volumns  []string `yaml:"volumes,omitempty"`
-	Ports    []string `yaml:"ports,omitempty"`
-	Depends  []string `yaml:"depends_on,omitempty"`
-	Networks []string `yaml:"networks,omitempty"`
+	Volumns    []string `yaml:"volumes,omitempty"`
+	Ports      []string `yaml:"ports,omitempty"`
+	Depends    []string `yaml:"depends_on,omitempty"`
+	Networks   []string `yaml:"networks,omitempty"`
+	ExtraHosts []string `yaml:"extra_hosts,omitempty"`
 }
 
 func GenerateDockerFiles(networkConfigByte []byte, dirpath string) bool {
@@ -150,6 +151,7 @@ func BuildCLI(dirPath string, otherConatiners []string) Container {
 	var networks = make([]string, 0)
 	networks = append(networks, "fabricnetwork")
 	cli.Networks = networks
+	cli.ExtraHosts = bulidExtraHosts()
 	return cli
 
 }
@@ -177,6 +179,7 @@ func BuildOrderer(cryptoBasePath, ordererName, domainName, port string, dependen
 	if dependencies != nil && len(dependencies) > 0 {
 		orderer.Depends = dependencies
 	}
+	orderer.ExtraHosts = bulidExtraHosts()
 	return orderer
 }
 func BuildKafkas(count int, mainContainer map[string]interface{}, zookeepers []string) []string {
@@ -266,6 +269,7 @@ func BuildPeerImage(cryptoBasePath, peerId, domainName, mspID, couchID string, o
 	container.Ports = ports
 	container.Extends = extnds
 	markPorts(ports, allPortsMap, peerFQDN)
+	container.ExtraHosts = bulidExtraHosts()
 	return container
 }
 func BuildCAImage(cryptoBasePath, domainName, orgname string, ports []string, allPortsMap map[string]string) Container {
@@ -297,6 +301,7 @@ func BuildCAImage(cryptoBasePath, domainName, orgname string, ports []string, al
 	container.Extends = extnds
 	container.WorkingDir = "/opt/ws"
 	markPorts(ports, allPortsMap, peerFQDN)
+	container.ExtraHosts = bulidExtraHosts()
 	return container
 }
 func BuildCouchDB(couchID string, ports []string, allPortsMap map[string]string) Container {
@@ -452,4 +457,12 @@ func markPorts(ports []string, allPortsMap map[string]string, containerName stri
 func (pr *PortRegulator) GetPort() int {
 	pr.Value = pr.Value + 1
 	return pr.Value
+}
+func bulidExtraHosts() []string {
+	extraHosts := make([]string, 0)
+	for index := range []int{1, 2, 3} {
+		extraHost := fmt.Sprintf("server%d.example.com:127.0.0.1", index)
+		extraHosts = append(extraHosts, extraHost)
+	}
+	return extraHosts
 }

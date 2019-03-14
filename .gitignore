@@ -15,4 +15,6 @@
 *.sh
 *.yaml
 .vscode/
+fabricnetgenerator
+
 
