@@ -335,6 +335,7 @@ func BuildBaseImage(addCA bool, ordererMSP string) ServiceConfig {
 	peerEnvironment = append(peerEnvironment, "CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key")
 	peerEnvironment = append(peerEnvironment, "CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt")
 	peerEnvironment = append(peerEnvironment, "GODEBUG=netdns=go")
+	peerEnvironment = append(peerEnvironment, "LICENSE=accept")
 
 	peerbase.Image = "hyperledger/fabric-peer:${IMAGE_TAG}"
 	peerbase.Environment = peerEnvironment
@@ -361,6 +362,8 @@ func BuildBaseImage(addCA bool, ordererMSP string) ServiceConfig {
 	ordererEnvironment = append(ordererEnvironment, "ORDERER_KAFKA_VERSION=0.9.0.1")
 
 	ordererEnvironment = append(ordererEnvironment, "GODEBUG=netdns=go")
+	ordererEnvironment = append(ordererEnvironment, "LICENSE=accept")
+
 	ordererBase.Image = "hyperledger/fabric-orderer:${IMAGE_TAG}"
 	ordererBase.Environment = ordererEnvironment
 	ordererBase.WorkingDir = "/opt/gopath/src/github.com/hyperledger/fabric"
@@ -372,6 +375,8 @@ func BuildBaseImage(addCA bool, ordererMSP string) ServiceConfig {
 	config["couchdb"] = couchDB
 	couchEnv := make([]string, 0)
 	couchEnv = append(couchEnv, "GODEBUG=netdns=go")
+	couchEnv = append(couchEnv, "LICENSE=accept")
+
 	couchDB.Environment = couchEnv
 
 	if addCA == true {
@@ -381,6 +386,8 @@ func BuildBaseImage(addCA bool, ordererMSP string) ServiceConfig {
 		caEnvironment = append(caEnvironment, "FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server")
 		caEnvironment = append(caEnvironment, "FABRIC_CA_SERVER_TLS_ENABLED=true")
 		caEnvironment = append(caEnvironment, "GODEBUG=netdns=go")
+		caEnvironment = append(caEnvironment, "LICENSE=accept")
+
 		ca.Environment = caEnvironment
 		ca.Command = "sh -c 'fabric-ca-server start -b admin:adminpw -d'"
 		config["ca"] = ca
@@ -390,6 +397,8 @@ func BuildBaseImage(addCA bool, ordererMSP string) ServiceConfig {
 	zookeeper.Restart = "always"
 	zkEnv := make([]string, 0)
 	zkEnv = append(zkEnv, "GODEBUG=netdns=go")
+	zkEnv = append(zkEnv, "LICENSE=accept")
+
 	zookeeper.Environment = zkEnv
 	ports := make([]string, 0)
 	ports = append(ports, "2181")
@@ -405,6 +414,8 @@ func BuildBaseImage(addCA bool, ordererMSP string) ServiceConfig {
 	kfkaEnv = append(kfkaEnv, "KAFKA_REPLICA_FETCH_MAX_BYTES=103809024")
 	kfkaEnv = append(kfkaEnv, "KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE=false")
 	kfkaEnv = append(kfkaEnv, "GODEBUG=netdns=go")
+	kfkaEnv = append(kfkaEnv, "LICENSE=accept")
+
 	kfka.Environment = kfkaEnv
 	kports := make([]string, 0)
 	kports = append(kports, "9092")
