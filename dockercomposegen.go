@@ -130,7 +130,7 @@ func GenerateDockerFiles(networkConfigByte []byte, dirpath string) bool {
 func BuildCLI(dirPath string, otherConatiners []string) Container {
 	var cli Container
 	cli.ContainerName = "cli"
-	cli.Image = "hyperledger/fabric-tools:${IMAGE_TAG}"
+	cli.Image = "hyperledger/fabric-tools:${TOOLS_TAG}"
 	cli.TTY = true
 	cli.WorkingDir = "/opt/ws"
 	vols := make([]string, 0)
@@ -141,7 +141,7 @@ func BuildCLI(dirPath string, otherConatiners []string) Container {
 	cliEnvironment := make([]string, 0)
 	cliEnvironment = append(cliEnvironment, "CORE_PEER_TLS_ENABLED=true")
 	cliEnvironment = append(cliEnvironment, "GOPATH=/opt/gopath")
-	cliEnvironment = append(cliEnvironment, "CORE_LOGGING_LEVEL=DEBUG")
+	cliEnvironment = append(cliEnvironment, "FABRIC_LOGGING_SPEC=DEBUG")
 	cliEnvironment = append(cliEnvironment, "CORE_PEER_ID=cli")
 	cliEnvironment = append(cliEnvironment, "GODEBUG=netdns=go")
 
@@ -162,6 +162,8 @@ func BuildOrderer(cryptoBasePath, ordererName, domainName, port string, dependen
 	extnds["service"] = "orderer"
 	ordFQDN := ordererName + "." + domainName
 	vols := make([]string, 0)
+	storePath := strings.Replace(ordFQDN, ".", "", -1)
+	vols = append(vols, fmt.Sprintf("./blocks/%s:/var/hyperledger/production/orderer", storePath))
 	vols = append(vols, cryptoBasePath+"/genesis.block:/var/hyperledger/orderer/genesis.block")
 	vols = append(vols, cryptoBasePath+"/crypto-config/ordererOrganizations/"+domainName+"/orderers/"+ordFQDN+"/msp:/var/hyperledger/orderer/msp")
 	vols = append(vols, cryptoBasePath+"/crypto-config/ordererOrganizations/"+domainName+"/orderers/"+ordFQDN+"/tls/:/var/hyperledger/orderer/tls")
@@ -242,6 +244,7 @@ func BuildPeerImage(cryptoBasePath, peerId, domainName, mspID, couchID string, o
 	peerEnvironment = append(peerEnvironment, "CORE_PEER_ADDRESS="+peerFQDN+":7051")
 	peerEnvironment = append(peerEnvironment, "CORE_PEER_CHAINCODELISTENADDRESS="+peerFQDN+":7052")
 	peerEnvironment = append(peerEnvironment, "CORE_PEER_GOSSIP_EXTERNALENDPOINT="+peerFQDN+":7051")
+	peerEnvironment = append(peerEnvironment, "CORE_PEER_EVENTS_ADDRESS="+peerFQDN+":7053")
 	peerEnvironment = append(peerEnvironment, "CORE_PEER_LOCALMSPID="+mspID)
 	peerEnvironment = append(peerEnvironment, "CORE_LEDGER_STATE_STATEDATABASE=CouchDB")
 	peerEnvironment = append(peerEnvironment, "CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS="+couchID+":5984")
@@ -251,6 +254,9 @@ func BuildPeerImage(cryptoBasePath, peerId, domainName, mspID, couchID string, o
 		peerEnvironment = append(peerEnvironment, "CORE_PEER_GOSSIP_BOOTSTRAP=peer0."+domainName+":7051")
 	}
 	vols := make([]string, 0)
+	storePath := strings.Replace(peerFQDN, ".", "", -1)
+	vols = append(vols, fmt.Sprintf("./blocks/%s:/var/hyperledger/production", storePath))
+
 	vols = append(vols, "/var/run/:/host/var/run/")
 	vols = append(vols, cryptoBasePath+"/crypto-config/peerOrganizations/"+domainName+"/peers/"+peerFQDN+"/msp:/etc/hyperledger/fabric/msp")
 	vols = append(vols, cryptoBasePath+"/crypto-config/peerOrganizations/"+domainName+"/peers/"+peerFQDN+"/tls:/etc/hyperledger/fabric/tls")
@@ -315,8 +321,11 @@ func BuildCouchDB(couchID string, ports []string, allPortsMap map[string]string)
 	networks = append(networks, "fabricnetwork")
 
 	couchContainer.Networks = networks
-
+	vols := make([]string, 0)
+	storePath := strings.Replace(couchID, ".", "", -1)
+	vols = append(vols, fmt.Sprintf("./worldstate/%s:/opt/couchdb/data", storePath))
 	couchContainer.Ports = ports
+	couchContainer.Volumns = vols
 	markPorts(ports, allPortsMap, couchID)
 	return couchContainer
 }
@@ -325,7 +334,7 @@ func BuildBaseImage(addCA bool, ordererMSP string) ServiceConfig {
 	peerEnvironment := make([]string, 0)
 	peerEnvironment = append(peerEnvironment, "CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock")
 	peerEnvironment = append(peerEnvironment, "CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=bc_fabricnetwork")
-	peerEnvironment = append(peerEnvironment, "CORE_LOGGING_LEVEL=DEBUG")
+	peerEnvironment = append(peerEnvironment, "FABRIC_LOGGING_SPEC=DEBUG")
 	peerEnvironment = append(peerEnvironment, "CORE_PEER_TLS_ENABLED=true")
 	peerEnvironment = append(peerEnvironment, "CORE_PEER_ENDORSER_ENABLED=true")
 	peerEnvironment = append(peerEnvironment, "CORE_PEER_GOSSIP_USELEADERELECTION=false")
@@ -336,6 +345,8 @@ func BuildBaseImage(addCA bool, ordererMSP string) ServiceConfig {
 	peerEnvironment = append(peerEnvironment, "CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt")
 	peerEnvironment = append(peerEnvironment, "GODEBUG=netdns=go")
 	peerEnvironment = append(peerEnvironment, "LICENSE=accept")
+	//peerEnvironment = append(peerEnvironment, "CORE_CHAINCODE_BUILDER=ibmblockchain/fabric-ccenv:${TAG_CCENV}")
+	//peerEnvironment = append(peerEnvironment, "CORE_CHAINCODE_GOLANG_RUNTIME=ibmblockchain/fabric-baseos-x86_64:${TAG_BASEOS}")
 
 	peerbase.Image = "hyperledger/fabric-peer:${IMAGE_TAG}"
 	peerbase.Environment = peerEnvironment
@@ -346,7 +357,7 @@ func BuildBaseImage(addCA bool, ordererMSP string) ServiceConfig {
 
 	var ordererBase Container
 	ordererEnvironment := make([]string, 0)
-	ordererEnvironment = append(ordererEnvironment, "ORDERER_GENERAL_LOGLEVEL=debug")
+	ordererEnvironment = append(ordererEnvironment, "FABRIC_LOGGING_SPEC=DEBUG")
 	ordererEnvironment = append(ordererEnvironment, "ORDERER_GENERAL_LISTENADDRESS=0.0.0.0")
 	ordererEnvironment = append(ordererEnvironment, "ORDERER_GENERAL_GENESISMETHOD=file")
 	ordererEnvironment = append(ordererEnvironment, "ORDERER_GENERAL_GENESISFILE=/var/hyperledger/orderer/genesis.block")
@@ -372,12 +383,12 @@ func BuildBaseImage(addCA bool, ordererMSP string) ServiceConfig {
 
 	var couchDB Container
 	couchDB.Image = "hyperledger/fabric-couchdb:${COUCH_TAG}"
-	config["couchdb"] = couchDB
 	couchEnv := make([]string, 0)
 	couchEnv = append(couchEnv, "GODEBUG=netdns=go")
 	couchEnv = append(couchEnv, "LICENSE=accept")
-
 	couchDB.Environment = couchEnv
+
+	config["couchdb"] = couchDB
 
 	if addCA == true {
 		var ca Container

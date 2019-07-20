@@ -44,7 +44,7 @@ func GenerateChainCodeScripts(config []byte, path string) bool {
 		ccID := getString(chainCodeConfig["ccid"])
 		version := getString(chainCodeConfig["version"])
 		src := getString(chainCodeConfig["src"])
-		channelName := fmt.Sprintf("%schannel", strings.ToLower((getString(chainCodeConfig["channelName"]))))
+		channelName := fmt.Sprintf("%s", strings.ToLower((getString(chainCodeConfig["channelName"]))))
 		participants, particpantExists := chainCodeConfig["participants"].([]interface{})
 		if !particpantExists {
 			fmt.Printf("No participants \n")

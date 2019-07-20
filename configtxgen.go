@@ -23,7 +23,7 @@ Profiles:
                 {{end}}
     {{ $x :=.consortium}}
     {{range .channels}}
-    {{.channelName}}Channel:
+    {{.channelName}}:
         Consortium: {{$x}}
         Application:
             <<: *ApplicationDefaults
@@ -106,7 +106,7 @@ func GenerateConfigTxGen(config []byte, filename string) bool {
 			//Quick fix for orderer port sequence
 			port := 7050
 			for index := 0; index < getNumber(ordererConfig["haCount"]); index++ {
-				listOfOrderers = append(listOfOrderers, fmt.Sprintf("%s%d.%s:%d", hostName, index, domainName, port))
+				listOfOrderers = append(listOfOrderers, fmt.Sprintf("%s%d.%s:%d", hostName, index, domainName, 7050))
 				port += 1000
 			}
 			dataMapContainer["ordererFDQNList"] = listOfOrderers

@@ -53,10 +53,10 @@ function generateArtifacts() {
 	
 		$CONFIGTXGEN -profile OrdererGenesis -outputBlock ./genesis.block  -channelID genesischannel
 		{{range .channels}}{{$chName := .channelName }}{{$channelId:= $chName | ToLower }}
-		$CONFIGTXGEN -profile {{print $chName "Channel"}} -outputCreateChannelTx ./{{print $channelId "channel.tx" }} -channelID {{ print $channelId "channel"}}
+		$CONFIGTXGEN -profile {{print $chName }} -outputCreateChannelTx ./{{print $channelId ".tx" }} -channelID {{ print $channelId }}
 		{{range $org:= .orgs}}
 		echo {{print "\"Generating anchor peers tx files for  " $org "\""}}
-		$CONFIGTXGEN -profile {{print $chName "Channel"}} -outputAnchorPeersUpdate  ./{{print $channelId "channel" $org "MSPAnchor.tx" }} -channelID {{ print $channelId "channel"}} -asOrg {{print $org "MSP" }}
+		$CONFIGTXGEN -profile {{print $chName }} -outputAnchorPeersUpdate  ./{{print $channelId  $org "MSPAnchor.tx" }} -channelID {{ print $channelId }} -asOrg {{print $org "MSP" }}
 		{{end}}
 		{{end}}
 
@@ -92,10 +92,10 @@ function generateArtifacts() {
 	
 		$CONFIGTXGEN -profile OrdererGenesis -outputBlock ./genesis.block
 		{{range .channels}}{{$chName := .channelName }}{{$channelId:= $chName | ToLower }}
-		$CONFIGTXGEN -profile {{print $chName "Channel"}} -outputCreateChannelTx ./{{print $channelId "channel.tx" }} -channelID {{ print $channelId "channel"}}
+		$CONFIGTXGEN -profile {{print $chName }} -outputCreateChannelTx ./{{print $channelId ".tx" }} -channelID {{ print $channelId }}
 		{{range $org:= .orgs}}
 		echo {{print "\"Generating anchor peers tx files for  " $org "\""}}
-		$CONFIGTXGEN -profile {{print $chName "Channel"}} -outputAnchorPeersUpdate  ./{{print $channelId "channel" $org "MSPAnchor.tx" }} -channelID {{ print $channelId "channel"}} -asOrg {{print $org "MSP" }}
+		$CONFIGTXGEN -profile {{print $chName }} -outputAnchorPeersUpdate  ./{{print $channelId  $org "MSPAnchor.tx" }} -channelID {{ print $channelId }} -asOrg {{print $org "MSP" }}
 		{{end}}
 
 		{{end}}
@@ -128,7 +128,7 @@ const _BuildChannelScript = `
 {{ $timeOut:= .timeout}}
 {{ $root := . }}
 {{range .channels}}
-	{{ $channelId := print .channelName "channel" | ToLower }}
+	{{ $channelId := print .channelName  | ToLower }}
 	echo "Building channel for {{print $channelId}}" 
 	{{$firstOrg := (index .orgs 0) }}
 	. setpeer.sh {{$firstOrg}} peer0
@@ -172,10 +172,14 @@ rm add_affi*.sh
 `
 const _SetEnv = `
 #!/bin/bash
-export IMAGE_TAG="{{.fabricCore}}"
-export COUCH_TAG="{{.couch}}"
-export ZK_TAG="{{.zk}}"
-export KAFKA_TAG="{{.kafka}}"
+export IMAGE_TAG="1.4.0"
+export COUCH_TAG="0.4.15"
+export ZK_TAG="0.4.14"
+export KAFKA_TAG="0.4.14"
+export TOOLS_TAG="1.4.0"
+export TAG_CCENV="1.4.0"
+export TAG_BASEOS="0.4.14"
+
 
 
 `
@@ -197,11 +201,7 @@ curl  $URL| tar xz
 `
 const _VERSION_COMP_MAP = `
 {
-	"1.0.0":{ "fabricCore":"x86_64-1.0.0","couch":"x86_64-1.0.0","zk":"x86_64-1.0.0","kafka":"x86_64-1.0.0"},
-	"1.0.4":{ "fabricCore":"x86_64-1.0.4","couch":"x86_64-1.0.4","zk":"x86_64-1.0.4","kafka":"x86_64-1.0.4"},
-	"1.1.0":{ "fabricCore":"x86_64-1.1.0","couch":"0.4.7","zk":"x86_64-1.0.6","kafka":"x86_64-1.0.6"},
-	"1.3.0":{ "fabricCore":"1.3.0","thirdParty":"0.4.14","couch":"0.4.14","zk":"0.4.14","kafka":"0.4.14"}
-	
+	"1.4.0":{ "fabricCore":"1.4.0","thirdParty":"0.4.14","couch":"0.4.15","zk":"0.4.14","kafka":"0.4.14"}
 }	
 
 `
@@ -213,6 +213,13 @@ const _CREATE_AFFILIATION = `
 #!/bin/bash
 fabric-ca-client enroll  -u https://admin:adminpw@ca.{{.domain}}:7054 --tls.certfiles /etc/hyperledger/fabric-ca-server-config/ca.{{.domain}}-cert.pem 
 fabric-ca-client affiliation add {{.orgName | ToLower }}  -u https://admin:adminpw@ca.{{.domain}}:7054 --tls.certfiles /etc/hyperledger/fabric-ca-server-config/ca.{{.domain}}-cert.pem 
+`
+
+const _CLEAR_VOL_SCRIPT = `
+#!/bin/bash
+sudo rm -rf ./worldstate
+sudo rm -rf ./blocks
+
 `
 
 func ToCMDString(input string) string {
@@ -235,7 +242,7 @@ func GenerateOtherScripts(config []byte, path string) bool {
 		return false
 	}
 	ioutil.WriteFile(path+".env", outputBytes.Bytes(), 0666)
-	versionMap := GetVersions("1.0.0")
+	versionMap := GetVersions("1.4.0")
 	version, _ := dataMapContainer["fabricVersion"].(string)
 	if ifExists(dataMapContainer, "fabricVersion") {
 		versionMap = GetVersions(version)
@@ -299,6 +306,7 @@ func GenerateOtherScripts(config []byte, path string) bool {
 		return false
 	}
 	ioutil.WriteFile(path+"removeImages.sh", outputBytes5.Bytes(), 0777)
+	ioutil.WriteFile(path+"clearVols.sh", []byte(_CLEAR_VOL_SCRIPT), 0777)
 
 	GenerateAffiliationScripts(config, path)
 	return true
