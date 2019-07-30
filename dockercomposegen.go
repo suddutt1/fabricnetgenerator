@@ -66,6 +66,7 @@ func GenerateDockerFiles(networkConfigByte []byte, dirpath string) bool {
 	ordConfigInput, _ := networkConfig["orderers"].(interface{})
 	ordConfig, _ := ordConfigInput.(map[string]interface{})
 	ordererContainerNames := make([]string, 0)
+	isRaft := false
 	if ifExists(ordConfig, "type") && ifExists(ordConfig, "haCount") && getString(ordConfig["type"]) == "kafka" {
 		zooKeeprs := BuildZookeeprs(3, containers)
 		kafkas := BuildKafkas(4, containers, zooKeeprs)
@@ -74,6 +75,17 @@ func GenerateDockerFiles(networkConfigByte []byte, dirpath string) bool {
 		ordererDomainName := getString(ordConfig["domain"])
 		for index := 0; index < ordererCount; index++ {
 			orderContainer := BuildOrderer(".", fmt.Sprintf("%s%d", ordererHostName, index), ordererDomainName, ordeerPortMap[index][0], kafkas, allPortsMap)
+			containers[orderContainer.ContainerName] = orderContainer
+			cliDependency = append(cliDependency, orderContainer.ContainerName)
+			ordererContainerNames = append(ordererContainerNames, orderContainer.ContainerName)
+		}
+	} else if ifExists(ordConfig, "type") && ifExists(ordConfig, "haCount") && getString(ordConfig["type"]) == "raft" {
+		isRaft = true
+		ordererCount := getNumber(ordConfig["haCount"])
+		ordererHostName := getString(ordConfig["ordererHostname"])
+		ordererDomainName := getString(ordConfig["domain"])
+		for index := 0; index < ordererCount; index++ {
+			orderContainer := BuildOrderer(".", fmt.Sprintf("%s%d", ordererHostName, index), ordererDomainName, ordeerPortMap[index][0], nil, allPortsMap)
 			containers[orderContainer.ContainerName] = orderContainer
 			cliDependency = append(cliDependency, orderContainer.ContainerName)
 			ordererContainerNames = append(ordererContainerNames, orderContainer.ContainerName)
@@ -119,7 +131,7 @@ func GenerateDockerFiles(networkConfigByte []byte, dirpath string) bool {
 	}
 
 	//generate the base.yaml
-	outBytes, _ := yaml.Marshal(BuildBaseImage(addCA, getString(ordConfig["mspID"])))
+	outBytes, _ := yaml.Marshal(BuildBaseImage(addCA, getString(ordConfig["mspID"]), isRaft))
 	ioutil.WriteFile(dirpath+"/base.yaml", outBytes, 0666)
 	portDetailsBytes, _ := json.MarshalIndent(allPortsMap, "", "  ")
 	ioutil.WriteFile(dirpath+"/portmap.json", portDetailsBytes, 0666)
@@ -329,7 +341,7 @@ func BuildCouchDB(couchID string, ports []string, allPortsMap map[string]string)
 	markPorts(ports, allPortsMap, couchID)
 	return couchContainer
 }
-func BuildBaseImage(addCA bool, ordererMSP string) ServiceConfig {
+func BuildBaseImage(addCA bool, ordererMSP string, isRaft bool) ServiceConfig {
 	var peerbase Container
 	peerEnvironment := make([]string, 0)
 	peerEnvironment = append(peerEnvironment, "CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock")
@@ -367,11 +379,16 @@ func BuildBaseImage(addCA bool, ordererMSP string) ServiceConfig {
 	ordererEnvironment = append(ordererEnvironment, "ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key")
 	ordererEnvironment = append(ordererEnvironment, "ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt")
 	ordererEnvironment = append(ordererEnvironment, "ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]")
-	ordererEnvironment = append(ordererEnvironment, "ORDERER_KAFKA_RETRY_SHORTINTERVAL=1s")
-	ordererEnvironment = append(ordererEnvironment, "ORDERER_KAFKA_RETRY_SHORTTOTAL=30s")
-	ordererEnvironment = append(ordererEnvironment, "ORDERER_KAFKA_VERBOSE=true")
-	ordererEnvironment = append(ordererEnvironment, "ORDERER_KAFKA_VERSION=0.9.0.1")
-
+	if !isRaft {
+		ordererEnvironment = append(ordererEnvironment, "ORDERER_KAFKA_RETRY_SHORTINTERVAL=1s")
+		ordererEnvironment = append(ordererEnvironment, "ORDERER_KAFKA_RETRY_SHORTTOTAL=30s")
+		ordererEnvironment = append(ordererEnvironment, "ORDERER_KAFKA_VERBOSE=true")
+		ordererEnvironment = append(ordererEnvironment, "ORDERER_KAFKA_VERSION=0.9.0.1")
+	} else {
+		ordererEnvironment = append(ordererEnvironment, "ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE=/var/hyperledger/orderer/tls/server.crt")
+		ordererEnvironment = append(ordererEnvironment, "ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY=/var/hyperledger/orderer/tls/server.key")
+		ordererEnvironment = append(ordererEnvironment, "ORDERER_GENERAL_CLUSTER_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]")
+	}
 	ordererEnvironment = append(ordererEnvironment, "GODEBUG=netdns=go")
 	ordererEnvironment = append(ordererEnvironment, "LICENSE=accept")
 
@@ -403,36 +420,37 @@ func BuildBaseImage(addCA bool, ordererMSP string) ServiceConfig {
 		ca.Command = "sh -c 'fabric-ca-server start -b admin:adminpw -d'"
 		config["ca"] = ca
 	}
-	var zookeeper Container
-	zookeeper.Image = "hyperledger/fabric-zookeeper:${ZK_TAG}"
-	zookeeper.Restart = "always"
-	zkEnv := make([]string, 0)
-	zkEnv = append(zkEnv, "GODEBUG=netdns=go")
-	zkEnv = append(zkEnv, "LICENSE=accept")
+	if !isRaft {
+		var zookeeper Container
+		zookeeper.Image = "hyperledger/fabric-zookeeper:${ZK_TAG}"
+		zookeeper.Restart = "always"
+		zkEnv := make([]string, 0)
+		zkEnv = append(zkEnv, "GODEBUG=netdns=go")
+		zkEnv = append(zkEnv, "LICENSE=accept")
 
-	zookeeper.Environment = zkEnv
-	ports := make([]string, 0)
-	ports = append(ports, "2181")
-	ports = append(ports, "2888")
-	ports = append(ports, "3888")
-	zookeeper.Ports = ports
-	config["zookeeper"] = zookeeper
-	var kfka Container
-	kfka.Image = "hyperledger/fabric-kafka:${KAFKA_TAG}"
-	kfka.Restart = "always"
-	kfkaEnv := make([]string, 0)
-	kfkaEnv = append(kfkaEnv, "KAFKA_MESSAGE_MAX_BYTES=103809024")
-	kfkaEnv = append(kfkaEnv, "KAFKA_REPLICA_FETCH_MAX_BYTES=103809024")
-	kfkaEnv = append(kfkaEnv, "KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE=false")
-	kfkaEnv = append(kfkaEnv, "GODEBUG=netdns=go")
-	kfkaEnv = append(kfkaEnv, "LICENSE=accept")
+		zookeeper.Environment = zkEnv
+		ports := make([]string, 0)
+		ports = append(ports, "2181")
+		ports = append(ports, "2888")
+		ports = append(ports, "3888")
+		zookeeper.Ports = ports
+		config["zookeeper"] = zookeeper
+		var kfka Container
+		kfka.Image = "hyperledger/fabric-kafka:${KAFKA_TAG}"
+		kfka.Restart = "always"
+		kfkaEnv := make([]string, 0)
+		kfkaEnv = append(kfkaEnv, "KAFKA_MESSAGE_MAX_BYTES=103809024")
+		kfkaEnv = append(kfkaEnv, "KAFKA_REPLICA_FETCH_MAX_BYTES=103809024")
+		kfkaEnv = append(kfkaEnv, "KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE=false")
+		kfkaEnv = append(kfkaEnv, "GODEBUG=netdns=go")
+		kfkaEnv = append(kfkaEnv, "LICENSE=accept")
 
-	kfka.Environment = kfkaEnv
-	kports := make([]string, 0)
-	kports = append(kports, "9092")
-	kfka.Ports = kports
-	config["kafka"] = kfka
-
+		kfka.Environment = kfkaEnv
+		kports := make([]string, 0)
+		kports = append(kports, "9092")
+		kfka.Ports = kports
+		config["kafka"] = kfka
+	}
 	var serviceConfig ServiceConfig
 	serviceConfig.Version = "2"
 	serviceConfig.Services = config

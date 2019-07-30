@@ -66,7 +66,8 @@ func buildOrderConfig(ordererConfig map[string]interface{}) map[string]interface
 	specs = append(specs, sansSpec)
 
 	if ifExists(ordererConfig, "haCount") && ifExists(ordererConfig, "type") {
-		if getString(ordererConfig["type"]) == "kafka" {
+		orderType := getString(ordererConfig["type"])
+		if orderType == "kafka" || orderType == "raft" {
 			template := make(map[string]interface{})
 			template["Count"] = ordererConfig["haCount"]
 			template["Hostname"] = fmt.Sprintf("%s{{.Index}}", getString(ordererConfig["ordererHostname"]))

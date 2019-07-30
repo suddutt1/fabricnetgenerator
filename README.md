@@ -11,6 +11,7 @@ The future versions of this tool is aimed to support multi-vm , K8S complient an
 
 
 ## Updates 
+#### July 30, 2019: Updated support for 1.4.2 with Raft
 #### July 20, 2019: Stopped support for verions below Fabric version 1.4.
 #### March 14, 2019: Added extra_hosts attribute same entries 
 #### Dec 28,2018: Fixed issues with Fabric version 1.3 . Updated code for some new features like pre-generated user lookup and ca-affiliate-add shell scripts 

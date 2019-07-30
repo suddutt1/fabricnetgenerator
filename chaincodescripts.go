@@ -17,7 +17,7 @@ func GenerateChainCodeScripts(config []byte, path string) bool {
 	peerCountMap := make(map[string]int)
 	ordererConfig := getMap(dataMapContainer["orderers"])
 	ordererFDQN := getString(ordererConfig["ordererHostname"]) + "." + getString(ordererConfig["domain"])
-	if ifExists(ordererConfig, "type") && ifExists(ordererConfig, "haCount") && getString(ordererConfig["type"]) == "kafka" {
+	if ifExists(ordererConfig, "type") && ifExists(ordererConfig, "haCount") && (getString(ordererConfig["type"]) == "kafka" || getString(ordererConfig["type"]) == "raft") {
 		ordererFDQN = getString(ordererConfig["ordererHostname"]) + "0." + getString(ordererConfig["domain"])
 	}
 	orgs, orgsExists := dataMapContainer["orgs"].([]interface{})

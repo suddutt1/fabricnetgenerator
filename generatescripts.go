@@ -170,7 +170,7 @@ rm *_update.sh
 rm add_affi*.sh
 
 `
-const _SetEnv = `
+const _SetEnv_1_4_0 = `
 #!/bin/bash
 export IMAGE_TAG="1.4.0"
 export COUCH_TAG="0.4.15"
@@ -180,7 +180,17 @@ export TOOLS_TAG="1.4.0"
 export TAG_CCENV="1.4.0"
 export TAG_BASEOS="0.4.14"
 
+`
+const _SetEnv_1_4_2 = `
+#!/bin/bash
+export IMAGE_TAG="1.4.2"
+export TOOLS_TAG="1.4.2"
+export TAG_CCENV="1.4.2"
+export COUCH_TAG="0.4.15"
+export TAG_BASEOS="0.4.15"
 
+export KAFKA_TAG="0.4.15"
+export ZK_TAG="0.4.15"
 
 `
 const _DOTENV = `
@@ -242,18 +252,26 @@ func GenerateOtherScripts(config []byte, path string) bool {
 		return false
 	}
 	ioutil.WriteFile(path+".env", outputBytes.Bytes(), 0666)
-	versionMap := GetVersions("1.4.0")
+	fabVersion := "1.4.0"
 	version, _ := dataMapContainer["fabricVersion"].(string)
 	if ifExists(dataMapContainer, "fabricVersion") {
-		versionMap = GetVersions(version)
+		fabVersion = version
 	}
-	tmpl, err = template.New("setenv").Parse(_SetEnv)
+	tmplName := _SetEnv_1_4_0
+	switch fabVersion {
+	case "1.4.0":
+		tmplName = _SetEnv_1_4_0
+	case "1.4.2":
+		tmplName = _SetEnv_1_4_2
+	}
+
+	tmpl, err = template.New("setenv").Parse(tmplName)
 	if err != nil {
 		fmt.Printf("Error in reading template %v\n", err)
 		return false
 	}
 	var outputBytes2 bytes.Buffer
-	err = tmpl.Execute(&outputBytes2, versionMap)
+	err = tmpl.Execute(&outputBytes2, nil)
 	if err != nil {
 		fmt.Printf("Error in generating the setenv.sh file %v\n", err)
 		return false
@@ -390,7 +408,7 @@ func GenerateBuildAndJoinChannelScript(config []byte, filename string) bool {
 	channelMap["channels"] = dataMapContainer["channels"]
 	//Resolve the orderer name
 	ordererConfig := getMap(dataMapContainer["orderers"])
-	if ifExists(ordererConfig, "type") && ifExists(ordererConfig, "haCount") && getString(ordererConfig["type"]) == "kafka" {
+	if ifExists(ordererConfig, "type") && ifExists(ordererConfig, "haCount") && (getString(ordererConfig["type"]) == "kafka" || getString(ordererConfig["type"]) == "raft") {
 		channelMap["ordererURL"] = fmt.Sprintf("%s0.%s:7050", getString(ordererConfig["ordererHostname"]), getString(ordererConfig["domain"]))
 	} else {
 		channelMap["ordererURL"] = fmt.Sprintf("%s.%s:7050", getString(ordererConfig["ordererHostname"]), getString(ordererConfig["domain"]))
@@ -415,8 +433,8 @@ func GetVersions(version string) map[string]string {
 	versionMap := make(map[string]map[string]string)
 	json.Unmarshal([]byte(_VERSION_COMP_MAP), &versionMap)
 	if details, isOk := versionMap[version]; !isOk {
-		fmt.Println("Invalid version number provided defaulting to 1.0.0")
-		return versionMap["1.0.0"]
+		fmt.Println("Invalid version number provided defaulting to 1.4.0")
+		return versionMap["1.4.0"]
 	} else {
 		return details
 	}
