@@ -15,6 +15,7 @@ func main() {
 	huntUsers := flag.Bool("lu", false, "Lookup crypto-config directory for pregenerated users and generates config snippet")
 	isJSONOutput := flag.Bool("json", false, "Generate config in json format")
 	genNetconfg := flag.Bool("ncex", false, "Generate an example network-config.json")
+	connProf := flag.Bool("cp", false, "Generate connection profile")
 	flag.Parse()
 	if *genExample {
 		action = "generateExample"
@@ -24,6 +25,9 @@ func main() {
 	}
 	if *huntUsers {
 		action = "huntUsers"
+	}
+	if *connProf {
+		action = "gen-connection-profile"
 	}
 
 	args := flag.Args()
@@ -52,6 +56,13 @@ func main() {
 			cryptoDirectory = flag.Args()[0]
 		}
 		HuntCertificates(cryptoDirectory, *isJSONOutput)
+	case "gen-connection-profile":
+		if len(args) == 0 {
+			flag.Usage()
+			os.Exit(1)
+		}
+		nc := NewNetworkConfig(args[0])
+		nc.GenerateConnectionProfile()
 	default:
 		flag.Usage()
 	}
