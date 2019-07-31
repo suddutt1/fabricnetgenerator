@@ -144,6 +144,40 @@ func (od *OrganizationDetails) BuildOrgDetails() interface{} {
 	return orgDetails
 }
 
+//BuildPeerEntityMatchers returns the peer entity matcher entries
+func (od *OrganizationDetails) BuildPeerEntityMatchers() interface{} {
+	entries := make([]interface{}, 0)
+
+	for index := 0; index < od.Peers; index++ {
+		fqdn := fmt.Sprintf("peer%d.%s", index, od.Domain)
+		entry := map[string]string{
+			"pattern":                             fqdn,
+			"urlSubstitutionExp":                  fmt.Sprintf("%s:7051", fqdn),
+			"eventUrlSubstitutionExp":             fmt.Sprintf("%s:7053", fqdn),
+			"sslTargetOverrideUrlSubstitutionExp": fqdn,
+			"mappedHost":                          fqdn,
+		}
+		entries = append(entries, entry)
+	}
+
+	return entries
+}
+
+//BuildCAEntityMatchers builds the entity matchers for CA
+func (od *OrganizationDetails) BuildCAEntityMatchers() interface{} {
+	entries := make([]interface{}, 0)
+	fqdn := fmt.Sprintf("ca.%s", od.Domain)
+	entry := map[string]string{
+		"pattern":                             fqdn,
+		"urlSubstitutionExp":                  fmt.Sprintf("%s:7054", fqdn),
+		"sslTargetOverrideUrlSubstitutionExp": fqdn,
+		"mappedHost":                          fqdn,
+	}
+	entries = append(entries, entry)
+
+	return entries
+}
+
 //BuildChannelDetails returns the channel entries
 func (od *OrganizationDetails) BuildChannelDetails(orderers []string) interface{} {
 	peerEntry := map[string]interface{}{
@@ -200,11 +234,15 @@ func (od *OrganizationDetails) BuildChannelDetails(orderers []string) interface{
 //BuildClientEntry builds the client entry for connection profile
 func (od *OrganizationDetails) BuildClientEntry() interface{} {
 	cpMap := struct {
-		Client  string                 `yaml:"client"`
-		Logging map[string]interface{} `yaml:"logging"`
-		Peer    map[string]interface{} `yaml:"peer"`
-		Orderer map[string]interface{} `yaml:"orderer"`
-		Global  map[string]interface{} `yaml:"global"`
+		Client     string                 `yaml:"client"`
+		Logging    map[string]interface{} `yaml:"logging"`
+		Peer       map[string]interface{} `yaml:"peer"`
+		Orderer    map[string]interface{} `yaml:"orderer"`
+		Global     map[string]interface{} `yaml:"global"`
+		CryptoPath map[string]interface{} `yaml:"cryptoconfig"`
+		CredStore  map[string]interface{} `yaml:"credentialStore"`
+		BCCSP      map[string]interface{} `yaml:"BCCSP"`
+		TLSCert    map[string]interface{} `yaml:"tlsCerts"`
 	}{
 		Client: strings.ToLower(od.Name),
 		Logging: map[string]interface{}{
@@ -232,6 +270,29 @@ func (od *OrganizationDetails) BuildClientEntry() interface{} {
 				"resmgmt": "180s",
 			},
 		},
+		CryptoPath: map[string]interface{}{
+			"path": "/networkPath/crypto-config",
+		},
+		CredStore: map[string]interface{}{
+			"path": fmt.Sprintf("./tmp%s/state-store", strings.ToLower(od.MSPID)),
+			"cryptoStore": map[string]interface{}{
+				"path": fmt.Sprintf("./tmp%s/msp", strings.ToLower(od.MSPID)),
+			},
+		},
+		BCCSP: map[string]interface{}{
+			"security": map[string]interface{}{
+				"enabled": true,
+				"default": map[string]interface{}{
+					"provider": "SW",
+				},
+				"hashAlgorithm": "SHA2",
+				"softVerify":    false,
+				"level":         256,
+			},
+		},
+		TLSCert: map[string]interface{}{
+			"systemCertPool": false,
+		},
 	}
 	return cpMap
 }
@@ -257,13 +318,14 @@ func (nc *NetworkConfig) GenerateConnectionProfile() {
 			channelMap[chName] = org.BuildChannelDetails(ordererList)
 		}
 		finalConfig := struct {
-			Ver        string      `yaml:"version"`
-			Client     interface{} `yaml:"client"`
-			ChannelMap interface{} `yaml:"channels"`
-			Orderer    interface{} `yaml:"orderers"`
-			Peers      interface{} `yaml:"peers"`
-			Orgs       interface{} `yaml:"organizations"`
-			CAEntries  interface{} `yaml:"certificateAuthorities"`
+			Ver            string      `yaml:"version"`
+			Client         interface{} `yaml:"client"`
+			ChannelMap     interface{} `yaml:"channels"`
+			Orderer        interface{} `yaml:"orderers"`
+			Peers          interface{} `yaml:"peers"`
+			Orgs           interface{} `yaml:"organizations"`
+			CAEntries      interface{} `yaml:"certificateAuthorities"`
+			EntityMatchers interface{} `yaml:"entityMatchers"`
 		}{
 			Ver:        "1.0.0",
 			Client:     org.BuildClientEntry(),
@@ -275,6 +337,11 @@ func (nc *NetworkConfig) GenerateConnectionProfile() {
 				"ordererorg":              nc.Orderer.BuildOrdererOrgDetails(),
 			},
 			CAEntries: org.BuildCAEntries(),
+			EntityMatchers: map[string]interface{}{
+				"peer":                 org.BuildPeerEntityMatchers(),
+				"orderer":              nc.Orderer.BuildEntityMatchers(),
+				"certificateAuthority": org.BuildCAEntityMatchers(),
+			},
 		}
 
 		output, err := yaml.Marshal(finalConfig)
@@ -365,4 +432,33 @@ func (od *OrdererDetails) BuildOSNDetails() interface{} {
 	}
 
 	return osnMap
+}
+
+//BuildEntityMatchers build the entity matchers
+func (od *OrdererDetails) BuildEntityMatchers() interface{} {
+	entries := make([]interface{}, 0)
+	if od.HACount > 0 {
+		for index := 0; index < od.HACount; index++ {
+			fqdn := fmt.Sprintf("%s%d.%s", od.OrdererHostname, index, od.Domain)
+			entry := map[string]string{
+				"pattern":                             fqdn,
+				"urlSubstitutionExp":                  fmt.Sprintf("%s:7050", fqdn),
+				"eventUrlSubstitutionExp":             fmt.Sprintf("%s:7050", fqdn),
+				"sslTargetOverrideUrlSubstitutionExp": fqdn,
+				"mappedHost":                          fqdn,
+			}
+			entries = append(entries, entry)
+		}
+	} else {
+		fqdn := fmt.Sprintf("%s.%s", od.OrdererHostname, od.Domain)
+		entry := map[string]string{
+			"pattern":                             fqdn,
+			"urlSubstitutionExp":                  fmt.Sprintf("%s:7050", fqdn),
+			"eventUrlSubstitutionExp":             fmt.Sprintf("%s:7050", fqdn),
+			"sslTargetOverrideUrlSubstitutionExp": fqdn,
+			"mappedHost":                          fqdn,
+		}
+		entries = append(entries, entry)
+	}
+	return entries
 }
