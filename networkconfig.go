@@ -85,7 +85,7 @@ func (od *OrganizationDetails) BuildPeerConnectionProfile() map[string]interface
 			"allow-insecure":           false,
 		}
 		tlsCACerts := map[string]interface{}{
-			"path": fmt.Sprintf("/networkPath/crypto-config/peerOrganizations/%s/tlsca/tlsca.%s-cert.pem", od.Domain, od.Domain),
+			"path": fmt.Sprintf("%s/crypto-config/peerOrganizations/%s/tlsca/tlsca.%s-cert.pem", getCurrentDirectory(), od.Domain, od.Domain),
 		}
 		profile[peerFQDN] = map[string]interface{}{
 			"grpcOptions": grpcOpts,
@@ -111,7 +111,7 @@ func (od *OrganizationDetails) BuildCAEntries() interface{} {
 			"verify": false,
 		},
 		TLSCACert: map[string]string{
-			"path": fmt.Sprintf("/networkPath/crypto-config/peerOrganizations/%s/ca/ca.%s-cert.pem", od.Domain, od.Domain),
+			"path": fmt.Sprintf("%s/crypto-config/peerOrganizations/%s/ca/ca.%s-cert.pem", getCurrentDirectory(), od.Domain, od.Domain),
 		},
 		CANAme: fmt.Sprintf("%sCA", od.Name),
 		Registerer: map[string]string{
@@ -271,7 +271,7 @@ func (od *OrganizationDetails) BuildClientEntry() interface{} {
 			},
 		},
 		CryptoPath: map[string]interface{}{
-			"path": "/networkPath/crypto-config",
+			"path": fmt.Sprintf("%s/crypto-config", getCurrentDirectory()),
 		},
 		CredStore: map[string]interface{}{
 			"path": fmt.Sprintf("./tmp%s/state-store", strings.ToLower(od.MSPID)),
@@ -349,7 +349,10 @@ func (nc *NetworkConfig) GenerateConnectionProfile() {
 			fmt.Printf("Error in marshalling %v\n", err)
 			os.Exit(2)
 		}
-		fmt.Printf("Output \n%s\n", string(output))
+		//fmt.Printf("Output\n%s", string(output))
+		if err := ioutil.WriteFile(fmt.Sprintf("connection-profile-%s.yaml", strings.ToLower(org.Name)), output, 0666); err != nil {
+			fmt.Printf("Unable to write connection profile %v", err)
+		}
 	}
 
 }
@@ -461,4 +464,11 @@ func (od *OrdererDetails) BuildEntityMatchers() interface{} {
 		entries = append(entries, entry)
 	}
 	return entries
+}
+
+func getCurrentDirectory() string {
+	if dir, err := os.Getwd(); err == nil {
+		return dir
+	}
+	return "/networkPath/"
 }
