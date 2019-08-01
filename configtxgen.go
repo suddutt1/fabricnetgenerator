@@ -8,88 +8,17 @@ import (
 	"text/template"
 )
 
-const _configTxTemplate = `
-Profiles:
-
-    OrdererGenesis:
-        Orderer:
-            <<: *OrdererDefaults
-            Organizations:
-                - *OrdererOrg
-        Consortiums:
-          {{.consortium}}:
-             Organizations:
-                {{ range .orgs}}- *{{ .name}}Org
-                {{end}}
-    {{ $x :=.consortium}}
-    {{range .channels}}
-    {{.channelName}}:
-        Consortium: {{$x}}
-        Application:
-            <<: *ApplicationDefaults
-            Organizations:
-                {{range $index,$var := .orgs}}- *{{$var}}Org
-                {{end}}
-    {{end}} 
-Organizations:
-    - &OrdererOrg
-        Name: {{index .orderers "mspID" }}
-        ID: {{index .orderers "mspID" }}
-        MSPDir: crypto-config/ordererOrganizations/{{ index .orderers "domain" }}/msp
-    {{range .orgs}}
-    - &{{ .name}}Org
-        Name: {{.mspID}}
-        ID: {{.mspID}}
-        MSPDir: crypto-config/peerOrganizations/{{ .domain  }}/msp
-        AnchorPeers:
-          - Host: peer0.{{.domain}}
-            Port: 7051
-        {{ end }}
-{{ if  and (eq .orderers.type "kafka")  (  .orderers.haCount ) }}
-Orderer: &OrdererDefaults
-        OrdererType: kafka
-        Addresses:{{ range .ordererFDQNList }}
-          - {{.}}{{end}}
-        BatchTimeout: 2s
-        BatchSize:
-          MaxMessageCount: 10
-          AbsoluteMaxBytes: 98 MB
-          PreferredMaxBytes: 512 KB
-        Kafka:
-          Brokers:
-            - kafka0:9092
-            - kafka1:9092
-            - kafka2:9092
-            - kafka3:9092
-        Organizations:
-{{else}}
-Orderer: &OrdererDefaults
-        OrdererType: solo
-        Addresses:
-          - {{index .orderers "ordererHostname" }}.{{index .orderers "domain"}}:7050
-        BatchTimeout: 2s
-        BatchSize:
-          MaxMessageCount: 10
-          AbsoluteMaxBytes: 98 MB
-          PreferredMaxBytes: 512 KB
-        Kafka:
-          Brokers:
-            - 127.0.0.1:9092
-        Organizations:
-
-{{end}}    
-Application: &ApplicationDefaults
-    Organizations:
-`
-
 func GenerateConfigTxGen(config []byte, filename string) bool {
 
 	dataMapContainer := make(map[string]interface{})
 	json.Unmarshal(config, &dataMapContainer)
 	configTxTemplate := _configTxTemplateV13
-	if IsVersionAbove(dataMapContainer, "1.4.0") {
+	confVersion := getString(dataMapContainer["fabricVersion"])
+	if confVersion == "1.4.2" {
 		fmt.Println("Generation 1.4.x compatible configtxgen")
 		configTxTemplate = _configTxTemplateV142Raft
+	} else {
+		fmt.Println("Generation 1.4.0 compatible configtxgen")
 	}
 	tmpl, err := template.New("configtxsolo").Parse(configTxTemplate)
 	if err != nil {
