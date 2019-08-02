@@ -35,7 +35,10 @@ type Container struct {
 	ExtraHosts []string `yaml:"extra_hosts,omitempty"`
 }
 
+//GenerateDockerFiles generate the docker-compose.yaml file
 func GenerateDockerFiles(networkConfigByte []byte, dirpath string) bool {
+	var nc NetworkConfig
+	json.Unmarshal(networkConfigByte, &nc)
 	var portRegulator *PortRegulator
 	allPortsMap := make(map[string]string)
 	addCA := false
@@ -74,7 +77,7 @@ func GenerateDockerFiles(networkConfigByte []byte, dirpath string) bool {
 		ordererHostName := getString(ordConfig["ordererHostname"])
 		ordererDomainName := getString(ordConfig["domain"])
 		for index := 0; index < ordererCount; index++ {
-			orderContainer := BuildOrderer(".", fmt.Sprintf("%s%d", ordererHostName, index), ordererDomainName, ordeerPortMap[index][0], kafkas, allPortsMap)
+			orderContainer := BuildOrderer(".", fmt.Sprintf("%s%d", ordererHostName, index), ordererDomainName, ordeerPortMap[index][0], kafkas, allPortsMap, nc)
 			containers[orderContainer.ContainerName] = orderContainer
 			cliDependency = append(cliDependency, orderContainer.ContainerName)
 			ordererContainerNames = append(ordererContainerNames, orderContainer.ContainerName)
@@ -85,13 +88,13 @@ func GenerateDockerFiles(networkConfigByte []byte, dirpath string) bool {
 		ordererHostName := getString(ordConfig["ordererHostname"])
 		ordererDomainName := getString(ordConfig["domain"])
 		for index := 0; index < ordererCount; index++ {
-			orderContainer := BuildOrderer(".", fmt.Sprintf("%s%d", ordererHostName, index), ordererDomainName, ordeerPortMap[index][0], nil, allPortsMap)
+			orderContainer := BuildOrderer(".", fmt.Sprintf("%s%d", ordererHostName, index), ordererDomainName, ordeerPortMap[index][0], nil, allPortsMap, nc)
 			containers[orderContainer.ContainerName] = orderContainer
 			cliDependency = append(cliDependency, orderContainer.ContainerName)
 			ordererContainerNames = append(ordererContainerNames, orderContainer.ContainerName)
 		}
 	} else {
-		orderContainer := BuildOrderer(".", getString(ordConfig["ordererHostname"]), getString(ordConfig["domain"]), ordeerPortMap[0][0], nil, allPortsMap)
+		orderContainer := BuildOrderer(".", getString(ordConfig["ordererHostname"]), getString(ordConfig["domain"]), ordeerPortMap[0][0], nil, allPortsMap, nc)
 		containers[orderContainer.ContainerName] = orderContainer
 		cliDependency = append(cliDependency, orderContainer.ContainerName)
 		ordererContainerNames = append(ordererContainerNames, orderContainer.ContainerName)
@@ -104,7 +107,7 @@ func GenerateDockerFiles(networkConfigByte []byte, dirpath string) bool {
 		peerCount := int(peerCountFlt)
 		fmt.Printf(" Peer count is %d \n ", peerCount)
 		if addCA == true {
-			caContainer := BuildCAImage(".", getString(orgConfig["domain"]), getString(orgConfig["name"]), caPortMap[index], allPortsMap)
+			caContainer := BuildCAImage(".", getString(orgConfig["domain"]), getString(orgConfig["name"]), caPortMap[index], allPortsMap, nc)
 			containers[caContainer.ContainerName] = caContainer
 		}
 		for peerIndex := 0; peerIndex < peerCount; peerIndex++ {
@@ -112,7 +115,7 @@ func GenerateDockerFiles(networkConfigByte []byte, dirpath string) bool {
 			couchID := fmt.Sprintf("couch%d", couchCount)
 			ports := peerPortMap[couchCount]
 			couchContainer := BuildCouchDB(couchID, couchPortMap[couchCount], allPortsMap)
-			containerImage := BuildPeerImage(".", peerID, getString(orgConfig["domain"]), getString(orgConfig["mspID"]), couchID, ordererContainerNames, ports, allPortsMap)
+			containerImage := BuildPeerImage(".", peerID, getString(orgConfig["domain"]), getString(orgConfig["mspID"]), couchID, ordererContainerNames, ports, allPortsMap, nc)
 			containers[couchContainer.ContainerName] = couchContainer
 			containers[containerImage.ContainerName] = containerImage
 			cliDependency = append(cliDependency, containerImage.ContainerName)
@@ -120,7 +123,7 @@ func GenerateDockerFiles(networkConfigByte []byte, dirpath string) bool {
 
 		}
 	}
-	cli := BuildCLI("./", cliDependency)
+	cli := BuildCLI("./", cliDependency, nc)
 	containers[cli.ContainerName] = cli
 	serviceConf.Services = containers
 	serviceBytes, _ := yaml.Marshal(serviceConf)
@@ -139,7 +142,9 @@ func GenerateDockerFiles(networkConfigByte []byte, dirpath string) bool {
 	return true
 
 }
-func BuildCLI(dirPath string, otherConatiners []string) Container {
+
+//BuildCLI builds the CLI container
+func BuildCLI(dirPath string, otherConatiners []string, nc NetworkConfig) Container {
 	var cli Container
 	cli.ContainerName = "cli"
 	cli.Image = "hyperledger/fabric-tools:${TOOLS_TAG}"
@@ -163,11 +168,13 @@ func BuildCLI(dirPath string, otherConatiners []string) Container {
 	var networks = make([]string, 0)
 	networks = append(networks, "fabricnetwork")
 	cli.Networks = networks
-	cli.ExtraHosts = bulidExtraHosts()
+	cli.ExtraHosts = nc.GetExtrahostsMapping()
 	return cli
 
 }
-func BuildOrderer(cryptoBasePath, ordererName, domainName, port string, dependencies []string, allPortsMap map[string]string) Container {
+
+//BuildOrderer builds orderer container configuration
+func BuildOrderer(cryptoBasePath, ordererName, domainName, port string, dependencies []string, allPortsMap map[string]string, nc NetworkConfig) Container {
 
 	extnds := make(map[string]string)
 	extnds["file"] = "base.yaml"
@@ -193,9 +200,11 @@ func BuildOrderer(cryptoBasePath, ordererName, domainName, port string, dependen
 	if dependencies != nil && len(dependencies) > 0 {
 		orderer.Depends = dependencies
 	}
-	orderer.ExtraHosts = bulidExtraHosts()
+	orderer.ExtraHosts = nc.GetExtrahostsMapping()
 	return orderer
 }
+
+//BuildKafkas builds kafka configurations
 func BuildKafkas(count int, mainContainer map[string]interface{}, zookeepers []string) []string {
 
 	extnds := make(map[string]string)
@@ -223,6 +232,8 @@ func BuildKafkas(count int, mainContainer map[string]interface{}, zookeepers []s
 	}
 	return containerNames
 }
+
+//BuildZookeeprs build zookeepers
 func BuildZookeeprs(count int, mainContainer map[string]interface{}) []string {
 	extnds := make(map[string]string)
 	extnds["file"] = "base.yaml"
@@ -244,7 +255,9 @@ func BuildZookeeprs(count int, mainContainer map[string]interface{}) []string {
 	}
 	return containerNames
 }
-func BuildPeerImage(cryptoBasePath, peerId, domainName, mspID, couchID string, ordererFQDN []string, ports []string, allPortsMap map[string]string) Container {
+
+//BuildPeerImage returns peer images
+func BuildPeerImage(cryptoBasePath, peerId, domainName, mspID, couchID string, ordererFQDN []string, ports []string, allPortsMap map[string]string, nc NetworkConfig) Container {
 
 	extnds := make(map[string]string)
 	extnds["file"] = "base.yaml"
@@ -287,10 +300,12 @@ func BuildPeerImage(cryptoBasePath, peerId, domainName, mspID, couchID string, o
 	container.Ports = ports
 	container.Extends = extnds
 	markPorts(ports, allPortsMap, peerFQDN)
-	container.ExtraHosts = bulidExtraHosts()
+	container.ExtraHosts = nc.GetExtrahostsMapping()
 	return container
 }
-func BuildCAImage(cryptoBasePath, domainName, orgname string, ports []string, allPortsMap map[string]string) Container {
+
+//BuildCAImage returns CA images
+func BuildCAImage(cryptoBasePath, domainName, orgname string, ports []string, allPortsMap map[string]string, nc NetworkConfig) Container {
 
 	extnds := make(map[string]string)
 	extnds["file"] = "base.yaml"
@@ -319,9 +334,11 @@ func BuildCAImage(cryptoBasePath, domainName, orgname string, ports []string, al
 	container.Extends = extnds
 	container.WorkingDir = "/opt/ws"
 	markPorts(ports, allPortsMap, peerFQDN)
-	container.ExtraHosts = bulidExtraHosts()
+	container.ExtraHosts = nc.GetExtrahostsMapping()
 	return container
 }
+
+//BuildCouchDB returns couch container confirguration
 func BuildCouchDB(couchID string, ports []string, allPortsMap map[string]string) Container {
 	var couchContainer Container
 	couchContainer.ContainerName = couchID
@@ -341,6 +358,8 @@ func BuildCouchDB(couchID string, ports []string, allPortsMap map[string]string)
 	markPorts(ports, allPortsMap, couchID)
 	return couchContainer
 }
+
+//BuildBaseImage returns peer case container
 func BuildBaseImage(addCA bool, ordererMSP string, isRaft bool) ServiceConfig {
 	var peerbase Container
 	peerEnvironment := make([]string, 0)
@@ -494,15 +513,17 @@ func markPorts(ports []string, allPortsMap map[string]string, containerName stri
 	}
 }
 
+//GetPort returns the latest port number
 func (pr *PortRegulator) GetPort() int {
 	pr.Value = pr.Value + 1
 	return pr.Value
 }
-func bulidExtraHosts() []string {
+
+/*func bulidExtraHosts() []string {
 	extraHosts := make([]string, 0)
 	for index := range []int{1, 2, 3} {
 		extraHost := fmt.Sprintf("server%d.example.com:127.0.0.1", index)
 		extraHosts = append(extraHosts, extraHost)
 	}
 	return extraHosts
-}
+}*/

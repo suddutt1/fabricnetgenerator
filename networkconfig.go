@@ -19,6 +19,7 @@ type NetworkConfig struct {
 	Orderer     OrdererDetails        `json:"orderers"`
 	Channels    []ChannelDetails      `json:"channels"`
 	Chaincodes  []ChaincodeDetails    `json:"chaincodes"`
+	ExtraHosts  map[string]string     `json:"extraHosts"`
 }
 
 //OrganizationDetails contains organization details
@@ -295,6 +296,18 @@ func (od *OrganizationDetails) BuildClientEntry() interface{} {
 		},
 	}
 	return cpMap
+}
+
+//GetExtrahostsMapping returns the extrs hosts mapping if available
+func (nc *NetworkConfig) GetExtrahostsMapping() []string {
+	if nc.ExtraHosts != nil && len(nc.ExtraHosts) > 0 {
+		output := make([]string, 0)
+		for key, value := range nc.ExtraHosts {
+			output = append(output, fmt.Sprintf("%s:%s", key, value))
+		}
+		return output
+	}
+	return []string{"myhost:127.0.0.1"}
 }
 
 //GenerateConnectionProfile generates all the organization connection profiles
