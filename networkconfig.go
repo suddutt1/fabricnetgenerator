@@ -107,7 +107,7 @@ func (od *OrganizationDetails) BuildCAEntries() interface{} {
 		CANAme     string            `yaml:"caName"`
 		Registerer map[string]string `yaml:"registrar"`
 	}{
-		URL: fmt.Sprintf("ca.%s:7054", od.Domain),
+		URL: fmt.Sprintf("https://ca.%s:7054", od.Domain),
 		HTTPS: map[string]bool{
 			"verify": false,
 		},
@@ -192,7 +192,7 @@ func (od *OrganizationDetails) BuildChannelDetails(orderers []string) interface{
 			"minResponses": 1,
 			"maxTargets":   1,
 			"retryOpts": map[string]interface{}{
-				"attempts":       "2",
+				"attempts":       2,
 				"initialBackoff": "500ms",
 				"maxBackoff":     "5s",
 				"backoffFactor":  1.0,
@@ -201,7 +201,7 @@ func (od *OrganizationDetails) BuildChannelDetails(orderers []string) interface{
 		"discovery": map[string]interface{}{
 			"maxTargets": 1,
 			"retryOpts": map[string]interface{}{
-				"attempts":       "2",
+				"attempts":       2,
 				"initialBackoff": "500ms",
 				"maxBackoff":     "5s",
 				"backoffFactor":  2.0,
@@ -235,17 +235,17 @@ func (od *OrganizationDetails) BuildChannelDetails(orderers []string) interface{
 //BuildClientEntry builds the client entry for connection profile
 func (od *OrganizationDetails) BuildClientEntry() interface{} {
 	cpMap := struct {
-		Client     string                 `yaml:"client"`
-		Logging    map[string]interface{} `yaml:"logging"`
-		Peer       map[string]interface{} `yaml:"peer"`
-		Orderer    map[string]interface{} `yaml:"orderer"`
-		Global     map[string]interface{} `yaml:"global"`
-		CryptoPath map[string]interface{} `yaml:"cryptoconfig"`
-		CredStore  map[string]interface{} `yaml:"credentialStore"`
-		BCCSP      map[string]interface{} `yaml:"BCCSP"`
-		TLSCert    map[string]interface{} `yaml:"tlsCerts"`
+		Organization string                 `yaml:"organization"`
+		Logging      map[string]interface{} `yaml:"logging"`
+		Peer         map[string]interface{} `yaml:"peer"`
+		Orderer      map[string]interface{} `yaml:"orderer"`
+		Global       map[string]interface{} `yaml:"global"`
+		CryptoPath   map[string]interface{} `yaml:"cryptoconfig"`
+		CredStore    map[string]interface{} `yaml:"credentialStore"`
+		BCCSP        map[string]interface{} `yaml:"BCCSP"`
+		TLSCert      map[string]interface{} `yaml:"tlsCerts"`
 	}{
-		Client: strings.ToLower(od.Name),
+		Organization: strings.ToLower(od.Name),
 		Logging: map[string]interface{}{
 			"level": "debug",
 		},
@@ -339,6 +339,7 @@ func (nc *NetworkConfig) GenerateConnectionProfile() {
 			Orgs           interface{} `yaml:"organizations"`
 			CAEntries      interface{} `yaml:"certificateAuthorities"`
 			EntityMatchers interface{} `yaml:"entityMatchers"`
+			XCANAme        string      `yaml:"X-OrgCA"`
 		}{
 			Ver:        "1.0.0",
 			Client:     org.BuildClientEntry(),
@@ -355,6 +356,7 @@ func (nc *NetworkConfig) GenerateConnectionProfile() {
 				"orderer":              nc.Orderer.BuildEntityMatchers(),
 				"certificateAuthority": org.BuildCAEntityMatchers(),
 			},
+			XCANAme: fmt.Sprintf("%sCA", org.Name),
 		}
 
 		output, err := yaml.Marshal(finalConfig)
@@ -416,7 +418,7 @@ func (od *OrdererDetails) BuildOSNDetails() interface{} {
 					"allow-insecure":           false,
 				},
 				TLSCACert: map[string]interface{}{
-					"path": fmt.Sprintf("ordererOrganizations/%s/users/{username}@%s/msp", od.Domain, od.Domain),
+					"path": fmt.Sprintf("%s/crypto-config/ordererOrganizations/%s/tlsca/tlsca.%s-cert.pem", getCurrentDirectory(), od.Domain, od.Domain),
 				},
 			}
 
@@ -439,7 +441,7 @@ func (od *OrdererDetails) BuildOSNDetails() interface{} {
 				"allow-insecure":           false,
 			},
 			TLSCACert: map[string]interface{}{
-				"path": fmt.Sprintf("ordererOrganizations/%s/users/{username}@%s/msp", od.Domain, od.Domain),
+				"path": fmt.Sprintf("%s/crypto-config/ordererOrganizations/%s/tlsca/tlsca.%s-cert.pem", getCurrentDirectory(), od.Domain, od.Domain),
 			},
 		}
 
