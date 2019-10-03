@@ -66,7 +66,7 @@ func main() {
 	default:
 		flag.Usage()
 	}
-
+    fmt.Printf("Done generating!\n")
 }
 
 var toolUsage = func() {
