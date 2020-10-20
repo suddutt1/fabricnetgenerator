@@ -273,6 +273,10 @@ func BuildPeerImage(cryptoBasePath, peerId, domainName, mspID, couchID string, o
 	peerEnvironment = append(peerEnvironment, "CORE_PEER_LOCALMSPID="+mspID)
 	peerEnvironment = append(peerEnvironment, "CORE_LEDGER_STATE_STATEDATABASE=CouchDB")
 	peerEnvironment = append(peerEnvironment, "CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS="+couchID+":5984")
+	peerEnvironment = append(peerEnvironment, "CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin")
+	peerEnvironment = append(peerEnvironment, "CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw")
+	//      -
+	//-
 	if peerId == "peer0" {
 		peerEnvironment = append(peerEnvironment, "CORE_PEER_GOSSIP_BOOTSTRAP="+peerFQDN+":7051")
 	} else {
@@ -418,17 +422,20 @@ func BuildBaseImage(addCA bool, ordererMSP string, isRaft bool) ServiceConfig {
 	config["orderer"] = ordererBase
 
 	var couchDB Container
-	couchDB.Image = "hyperledger/fabric-couchdb:${COUCH_TAG}"
+	couchDB.Image = "couchdb:${COUCH_TAG}"
 	couchEnv := make([]string, 0)
 	couchEnv = append(couchEnv, "GODEBUG=netdns=go")
 	couchEnv = append(couchEnv, "LICENSE=accept")
+	couchEnv = append(couchEnv, "COUCHDB_USER=admin")
+	couchEnv = append(couchEnv, "COUCHDB_PASSWORD=adminpw")
+
 	couchDB.Environment = couchEnv
 
 	config["couchdb"] = couchDB
 
 	if addCA == true {
 		var ca Container
-		ca.Image = "hyperledger/fabric-ca:${IMAGE_TAG}"
+		ca.Image = "hyperledger/fabric-ca:${CA_TAG}"
 		caEnvironment := make([]string, 0)
 		caEnvironment = append(caEnvironment, "FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server")
 		caEnvironment = append(caEnvironment, "FABRIC_CA_SERVER_TLS_ENABLED=true")

@@ -17,6 +17,10 @@ func GenerateConfigTxGen(config []byte, filename string) bool {
 	if confVersion == "1.4.2" {
 		fmt.Println("Generation 1.4.x compatible configtxgen")
 		configTxTemplate = _configTxTemplateV142Raft
+	} else if confVersion == "2.2.0" {
+		fmt.Println("Generation 2.2.x compatible configtxgen")
+		configTxTemplate = _configTxTemplateV22Raft
+
 	} else {
 		fmt.Println("Generation 1.4.0 compatible configtxgen")
 	}

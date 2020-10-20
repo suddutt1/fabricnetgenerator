@@ -342,3 +342,153 @@ Profiles:
         
 
 `
+
+const _configTxTemplateV22Raft = `
+Organizations:
+    - &OrdererOrg
+            Name: {{index .orderers "mspID" }}
+            ID: {{index .orderers "mspID" }}
+            MSPDir: crypto-config/ordererOrganizations/{{ index .orderers "domain" }}/msp
+            Policies:
+                Readers:
+                    Type: Signature
+                    Rule: "OR('{{index .orderers "mspID" }}.member')"
+                Writers:
+                    Type: Signature
+                    Rule: "OR('{{index .orderers "mspID" }}.member')"
+                Admins:
+                    Type: Signature
+                    Rule: "OR('{{index .orderers "mspID" }}.admin')"
+
+    {{range .orgs}}
+    - &{{ .name}}Org
+            Name: {{.mspID}}
+            ID: {{.mspID}}
+            MSPDir: crypto-config/peerOrganizations/{{ .domain  }}/msp
+            Policies:
+                Readers:
+                    Type: Signature
+                    Rule: "OR('{{.mspID}}.admin', '{{.mspID}}.peer', '{{.mspID}}.client' )"
+                Writers:
+                    Type: Signature
+                    Rule: "OR('{{.mspID}}.admin', '{{.mspID}}.client' )"
+                Admins:
+                    Type: Signature
+                    Rule: "OR('{{.mspID}}.admin')"
+                Endorsement:
+                    Type: Signature
+                    Rule: "OR('{{.mspID}}.peer')"                
+            AnchorPeers:
+              - Host: peer0.{{.domain}}
+                Port: 7051
+    {{end }}
+
+Capabilities:
+    Channel: &ChannelCapabilities
+        V2_0: true
+    Orderer: &OrdererCapabilities
+        V2_0: true
+    Application: &ApplicationCapabilities
+        V2_0: true
+
+
+Application: &ApplicationDefaults
+    Organizations:
+
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+        LifecycleEndorsement:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Endorsement"
+        Endorsement:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Endorsement"
+    Capabilities:
+        <<: *ApplicationCapabilities
+
+
+Orderer: &OrdererDefaults
+    OrdererType: etcdraft
+    Addresses:{{ range .ordererFDQNList }}
+          - {{.}}{{end}}
+    BatchTimeout: 2s
+    BatchSize:
+        MaxMessageCount: 10
+        AbsoluteMaxBytes: 98 MB
+        PreferredMaxBytes: 1024 KB
+    EtcdRaft:
+        Consenters:
+          {{ range .consenters }}
+            - Host: {{.hostname}}
+              Port: 7050
+              ClientTLSCert: {{.clientTLSCert}}
+              ServerTLSCert: {{.serverTLSCert}}
+           {{end}}
+    Organizations:
+
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+        BlockValidation:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+
+Channel: &ChannelDefaults
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+    Capabilities:
+        <<: *ChannelCapabilities
+
+Profiles:
+    OrdererGenesis:
+        <<: *ChannelDefaults
+        Orderer:
+            <<: *OrdererDefaults
+            Organizations:
+                - *OrdererOrg
+            Capabilities:
+                <<: *OrdererCapabilities 
+        Consortiums:
+            {{.consortium}}:
+                Organizations:
+                   {{ range .orgs}}- *{{ .name}}Org
+                   {{end}}
+        {{ $x :=.consortium}}
+    {{range .channels}}
+    {{.channelName}}:
+        Consortium: {{$x}}
+        <<: *ChannelDefaults
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+              {{range $index,$var := .orgs}}- *{{$var}}Org
+              {{end}}
+            Capabilities:
+              <<: *ApplicationCapabilities
+    {{end}}
+        
+
+`

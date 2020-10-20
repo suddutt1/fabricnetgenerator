@@ -51,7 +51,8 @@ function generateArtifacts() {
         
         echo " ************ Generating tx files ************ "
 	
-		$CONFIGTXGEN -profile OrdererGenesis -outputBlock ./genesis.block  -channelID genesischannel
+		$CONFIGTXGEN -profile OrdererGenesis -channelID system-channel -outputBlock ./genesis.block  -channelID genesischannel
+		
 		{{range .channels}}{{$chName := .channelName }}{{$channelId:= $chName | ToLower }}
 		$CONFIGTXGEN -profile {{print $chName }} -outputCreateChannelTx ./{{print $channelId ".tx" }} -channelID {{ print $channelId }}
 		{{range $org:= .orgs}}
@@ -90,7 +91,7 @@ function generateArtifacts() {
         
         echo " ************ Generating tx files ************ "
 	
-		$CONFIGTXGEN -profile OrdererGenesis -outputBlock ./genesis.block
+		$CONFIGTXGEN -profile OrdererGenesis -channelID system-channel -outputBlock ./genesis.block
 		{{range .channels}}{{$chName := .channelName }}{{$channelId:= $chName | ToLower }}
 		$CONFIGTXGEN -profile {{print $chName }} -outputCreateChannelTx ./{{print $channelId ".tx" }} -channelID {{ print $channelId }}
 		{{range $org:= .orgs}}
@@ -179,6 +180,7 @@ export KAFKA_TAG="0.4.14"
 export TOOLS_TAG="1.4.0"
 export TAG_CCENV="1.4.0"
 export TAG_BASEOS="0.4.14"
+export CA_TAG="1.4.0"
 
 `
 const _SetEnv_1_4_2 = `
@@ -188,11 +190,24 @@ export TOOLS_TAG="1.4.2"
 export TAG_CCENV="1.4.2"
 export COUCH_TAG="0.4.15"
 export TAG_BASEOS="0.4.15"
+export CA_TAG="1.4.2"
 
 export KAFKA_TAG="0.4.15"
 export ZK_TAG="0.4.15"
 
 `
+const _SetEnv_2_2 = `
+#!/bin/bash
+export IMAGE_TAG="2.2.0"
+export TOOLS_TAG="2.2.0"
+export TAG_CCENV="2.2.0"
+export COUCH_TAG="3.1"
+export TAG_BASEOS="2.2.0"
+export CA_TAG="1.4.7"
+
+
+`
+
 const _DOTENV = `
 COMPOSE_PROJECT_NAME=bc
 
@@ -262,6 +277,8 @@ func GenerateOtherScripts(config []byte, path string) bool {
 		tmplName = _SetEnv_1_4_0
 	case "1.4.2":
 		tmplName = _SetEnv_1_4_2
+	case "2.2.0":
+		tmplName = _SetEnv_2_2
 	}
 
 	tmpl, err = template.New("setenv").Parse(tmplName)
