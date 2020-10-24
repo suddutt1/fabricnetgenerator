@@ -12,6 +12,7 @@ func main() {
 	//flag.Usage = toolUsage
 	action := "generateNetwork"
 	genExample := flag.Bool("ccex", false, "Generate example chaincode")
+	v2Example := flag.Bool("v2", true, "Generate samples in fabric 2.2.x compliant")
 	huntUsers := flag.Bool("lu", false, "Lookup crypto-config directory for pregenerated users and generates config snippet")
 	isJSONOutput := flag.Bool("json", false, "Generate config in json format")
 	genNetconfg := flag.Bool("ncex", false, "Generate an example network-config.json")
@@ -47,7 +48,11 @@ func main() {
 
 		GenerateNetworkItems(configBytes, ".")
 	case "generateExample":
-		GenerateExampleCC("v1", "./")
+		if !*v2Example {
+			GenerateExampleCC("v1", "./")
+		} else {
+			GenerateExampleCCV2("v2", "./")
+		}
 	case "generateConfExample":
 		GenerateExampleConfig("v1", "./")
 	case "huntUsers":
