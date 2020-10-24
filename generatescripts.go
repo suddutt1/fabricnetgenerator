@@ -12,6 +12,12 @@ import (
 const _SetPeerTemplate = `
 #!/bin/bash
 export ORDERER_CA=/opt/ws/crypto-config/ordererOrganizations/{{.orderers.domain}}/msp/tlscacerts/tlsca.{{.orderers.domain}}-cert.pem
+
+#For fabric 2.2.x extra environment variables
+{{range .orgs}}
+export {{.name | ToUpper }}_PEER0_CA=/opt/ws/crypto-config/peerOrganizations/{{.domain}}/peers/peer0.{{.domain}}/tls/ca.crt
+{{end}}
+
 {{$primechannel := (index .channels 0).channelName }}
 if [ $# -lt 2 ];then
 	echo "Usage : . setpeer.sh {{range .orgs}}{{.name}}|{{end}} <peerid>"
@@ -169,6 +175,9 @@ rm buildandjoinchannel.sh
 rm *_install.sh
 rm *_update.sh
 rm add_affi*.sh
+rm -rf *.log
+rm -rf *log.txt
+rm -rf *.tar.gz
 
 `
 const _SetEnv_1_4_0 = `
@@ -204,6 +213,21 @@ export TAG_CCENV="2.2.0"
 export COUCH_TAG="3.1"
 export TAG_BASEOS="2.2.0"
 export CA_TAG="1.4.7"
+
+
+`
+const _GitIgnore = `
+worldstate/
+*.tar.gz
+*.txt
+*.block
+*.tx
+bin/
+blocks/
+crypto-config/*
+config/
+bin/
+chaincode/*
 
 
 `
@@ -341,7 +365,7 @@ func GenerateOtherScripts(config []byte, path string) bool {
 	}
 	ioutil.WriteFile(path+"removeImages.sh", outputBytes5.Bytes(), 0777)
 	ioutil.WriteFile(path+"clearVols.sh", []byte(_CLEAR_VOL_SCRIPT), 0777)
-
+	ioutil.WriteFile(path+".gitignore", []byte(_GitIgnore), 0666)
 	GenerateAffiliationScripts(config, path)
 	return true
 }
@@ -373,9 +397,12 @@ func GenerateGenerateArtifactsScript(config []byte, filename string) bool {
 	ioutil.WriteFile(filename, outputBytes.Bytes(), 0777)
 	return true
 }
+
+//GenerateSetPeer emits setpeer.sh file
 func GenerateSetPeer(config []byte, filename string) bool {
 	funcMap := template.FuncMap{
 		"ToLower": strings.ToLower,
+		"ToUpper": strings.ToUpper,
 	}
 
 	tmpl, err := template.New("setPeer").Funcs(funcMap).Parse(_SetPeerTemplate)

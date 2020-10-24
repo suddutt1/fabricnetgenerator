@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -310,6 +311,15 @@ func (nc *NetworkConfig) GetExtrahostsMapping() []string {
 	return []string{"myhost:127.0.0.1"}
 }
 
+//GetOrgMap returns a map org names vs Organization full details
+func (nc *NetworkConfig) GetOrgMap() map[string]OrganizationDetails {
+	orgMap := make(map[string]OrganizationDetails)
+	for _, orgDetails := range nc.Orgs {
+		orgMap[orgDetails.Name] = orgDetails
+	}
+	return orgMap
+}
+
 //GenerateConnectionProfile generates all the organization connection profiles
 func (nc *NetworkConfig) GenerateConnectionProfile() {
 	ordererList := nc.Orderer.GetFQDNList()
@@ -486,4 +496,20 @@ func getCurrentDirectory() string {
 		return dir
 	}
 	return "/networkPath/"
+}
+
+//GetCCEndorsementPolicy returns Chaincode policy
+func (cd *ChaincodeDetails) GetCCEndorsementPolicy(orgMap map[string]OrganizationDetails) string {
+	var buf bytes.Buffer
+	for index, particpant := range cd.Participants {
+		orgDetails := orgMap[particpant]
+
+		if index != 0 {
+			buf.WriteString(" , ")
+		}
+		member := fmt.Sprintf("'%s.member'", orgDetails.MSPID)
+		buf.WriteString(member)
+	}
+
+	return fmt.Sprintf(" OR( %s) ", buf.String())
 }

@@ -7,11 +7,17 @@ import (
 	"strings"
 )
 
+//GenerateChainCodeScripts generate chaincode scipts
 func GenerateChainCodeScripts(config []byte, path string) bool {
 	fmt.Println("Generating config scripts")
 	fileNames := make([]string, 0)
 	dataMapContainer := make(map[string]interface{})
 	json.Unmarshal(config, &dataMapContainer)
+	version, _ := dataMapContainer["fabricVersion"].(string)
+	if strings.HasPrefix(version, "2.2") {
+		return GenerateNewLifecycleCCScripts(config)
+
+	}
 	//Build the msp info
 	mspMap := make(map[string]string)
 	peerCountMap := make(map[string]int)
