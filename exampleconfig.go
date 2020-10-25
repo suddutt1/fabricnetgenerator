@@ -42,7 +42,7 @@ const _network_config_v1_example = `
         ],
     "extraHosts":{
         "orderer":"<actual ip address>"
-    }
+    },
     "consortium":"SupplyChainConsortium",
     "channels" :[
                     {"channelName":"Sales","orgs":["Buyer","Seller"] },
