@@ -10,6 +10,7 @@ import (
 func GenerateReadme(config []byte, path string) {
 
 	var buffer bytes.Buffer
+
 	buffer.WriteString("## Installation steps ")
 	buffer.WriteString("Unzip and place the contents generated in a directory. \n")
 	buffer.WriteString("The directory is referred as <network>.  \n")
@@ -37,16 +38,21 @@ func GenerateReadme(config []byte, path string) {
 		buffer.WriteString("\n  export NETWORKDIR=`pwd` ")
 		buffer.WriteString(fmt.Sprintf("\n  mkdir -p chaincode/%s ", ccDetailsMap["src"]))
 		buffer.WriteString(fmt.Sprintf("\n  cd chaincode/%s ", ccDetailsMap["src"]))
+		buffer.WriteString("\n # Copy the chain code source files here \n")
 		buffer.WriteString("\n  go mod vendor")
 		buffer.WriteString("\n  cd $NETWORKDIR \n\n")
 
 	}
 	buffer.WriteString("``` \n")
-	buffer.WriteString("\n 4. Copy the chain code files in the respectivive directories \n")
-	buffer.WriteString("\n 5. Start the netowrk  \n\n")
+
+	buffer.WriteString("\n 4. Start the netowrk  \n\n")
 	buffer.WriteString("```sh \n")
 	buffer.WriteString("  . setenv.sh \n")
 	buffer.WriteString("  docker-compose up -d \n")
+	buffer.WriteString("``` \n")
+	buffer.WriteString("\n 5. Run organization affiliation script for add organization for each orgs\n")
+	buffer.WriteString("```sh \n")
+	buffer.WriteString("  docker exec -it ca.<org domain name> bash -e add_affiliation_<org_name>.sh \n")
 	buffer.WriteString("``` \n")
 	buffer.WriteString("\n 6. Build and join channel. Make sure that network is running \n\n")
 	buffer.WriteString("```sh \n")

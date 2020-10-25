@@ -40,6 +40,9 @@ const _network_config_v1_example = `
             "userCount":2
         }
         ],
+    "extraHosts":{
+        "orderer":"<actual ip address>"
+    }
     "consortium":"SupplyChainConsortium",
     "channels" :[
                     {"channelName":"Sales","orgs":["Buyer","Seller"] },

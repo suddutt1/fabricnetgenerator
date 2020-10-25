@@ -38,6 +38,6 @@ func GenerateNetworkItems(configBytes []byte, baseOutputPath string) {
 	if !GenerateChainCodeScripts(configBytes, baseOutputPath+"/") {
 		fmt.Println("Error in generating chain code related scripts")
 	}
-	fmt.Println("Generating README.txt")
+	fmt.Println("Generating README.md")
 	GenerateReadme(configBytes, baseOutputPath+"/")
 }

@@ -421,7 +421,10 @@ func GenerateSetPeer(config []byte, filename string) bool {
 	ioutil.WriteFile(filename, outputBytes.Bytes(), 0777)
 	return true
 }
+
+//GenerateBuildAndJoinChannelScript generates build and join channel script
 func GenerateBuildAndJoinChannelScript(config []byte, filename string) bool {
+
 	funcMap := template.FuncMap{
 		"ToCMDString": ToCMDString,
 		"ToLower":     strings.ToLower,
@@ -435,6 +438,12 @@ func GenerateBuildAndJoinChannelScript(config []byte, filename string) bool {
 	dataMapContainer := make(map[string]interface{})
 	channelMap := make(map[string]interface{})
 	json.Unmarshal(config, &dataMapContainer)
+	//Check the version
+	fabricVersion, _ := dataMapContainer["fabricVersion"].(string)
+	if strings.HasPrefix(fabricVersion, "2.2") {
+		return GenerateBuildAndJoinChannelScriptV2x(config)
+	}
+
 	orgs, _ := dataMapContainer["orgs"].([]interface{})
 	for _, org := range orgs {
 		orgConfig := getMap(org)
