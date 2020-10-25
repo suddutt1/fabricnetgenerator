@@ -275,6 +275,9 @@ func BuildPeerImage(cryptoBasePath, peerId, domainName, mspID, couchID string, o
 	peerEnvironment = append(peerEnvironment, "CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS="+couchID+":5984")
 	peerEnvironment = append(peerEnvironment, "CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin")
 	peerEnvironment = append(peerEnvironment, "CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw")
+	peerEnvironment = append(peerEnvironment, "CORE_CHAINCODE_MODE=net")
+	peerEnvironment = append(peerEnvironment, "CORE_PEER_NETWORKID=bc")
+
 	//      -
 	//-
 	if peerId == "peer0" {

@@ -255,7 +255,7 @@ const _VERSION_COMP_MAP = `
 `
 const _REMOVE_IMAGES = `
 #!/bin/bash
-docker rmi -f {{ "docker images dev* -aq" | ToCMDString}}
+docker rmi -f {{ "docker images bc* -aq" | ToCMDString}}
 `
 const _CREATE_AFFILIATION = `
 #!/bin/bash

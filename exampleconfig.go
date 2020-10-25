@@ -9,7 +9,7 @@ func GenerateExampleConfig(version, basePath string) {
 
 const _network_config_v1_example = `
 {
-    "fabricVersion":"1.4.2",
+    "fabricVersion":"2.2.0",
     "orderers":{
         "name" :"Orderer","mspID":"OrdererMSP","domain":"supplychain.net","ordererHostname":"orderer","SANS":"localhost","type":"raft","haCount":3
     },
