@@ -115,7 +115,9 @@ const ccInstallPartCCPakage = `
 . setpeer.sh  %s peer0
 
 # Package the chaincode 
-peer lifecycle chaincode package ${CC_NAME}.tar.gz  --path  %s  --lang golang --label ${CC_NAME}_${CC_VERSION}
+cd chaincode/%s
+peer lifecycle chaincode package /opt/ws/${CC_NAME}.tar.gz  --path .  --lang golang --label ${CC_NAME}_${CC_VERSION}
+cd /opt/ws
 
 `
 
