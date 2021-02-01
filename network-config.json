@@ -1,41 +1,94 @@
 {
-    "fabricVersion":"1.0.0",
-    "orderers":{
-        "name" :"Orderer","mspID":"ElementsOrdererMSP","domain":"elements.net","ordererHostname":"eorderer","SANS":"localhost","type":"kafka","haCount":3
+    "fabricVersion": "1.0.0",
+    "orderers": {
+        "name": "Orderer",
+        "mspID": "ElementsOrdererMSP",
+        "domain": "elements.net",
+        "ordererHostname": "eorderer",
+        "SANS": "localhost",
+        "caCountry": "IN",
+        "caProvince": "Delhi-NCR",
+        "caLocality": "Delhi",
+        "caOrganizationalUnit": "IT",
+        "caStreetAddress": "1, M.G ROAD",
+        "caPostalCode": "100001",
+        "type": "kafka",
+        "haCount": 3
     },
-    "addCA":"false",
-    "startPort":20000,
-    "orgs":[
-        { 
-            "name" :"Air",
-            "domain":"air.net",
-            "mspID":"AirMSP",
-            "SANS":"localhost",
-            "peerCount":2,
-            "userCount":2
+    "addCA": "false",
+    "startPort": 20000,
+    "orgs": [
+        {
+            "name": "Air",
+            "domain": "air.net",
+            "mspID": "AirMSP",
+            "SANS": "localhost",
+            "caCountry": "IN",
+            "caProvince": "West Bengal",
+            "caLocality": "Kolkata",
+            "caOrganizationalUnit": "IT",
+            "caStreetAddress": "1, M.G ROAD",
+            "caPostalCode": "700001",
+            "peerCount": 2,
+            "userCount": 2
         },
-        { 
-            "name" :"Water",
-            "domain":"water.net",
-            "mspID":"WaterMSP",
-            "SANS":"localhost",
-            "peerCount":2,
-            "userCount":2
+        {
+            "name": "Water",
+            "domain": "water.net",
+            "mspID": "WaterMSP",
+            "SANS": "localhost",
+            "caCountry": "IN",
+            "caProvince": "Karnataka",
+            "caLocality": "Bangaluru",
+            "caOrganizationalUnit": "IT",
+            "caStreetAddress": "1, M.G ROAD",
+            "caPostalCode": "560001",
+            "peerCount": 2,
+            "userCount": 2
         },
-        { 
-            "name" :"Soil",
-            "domain":"soil.net",
-            "mspID":"SoilMSP",
-            "SANS":"localhost",
-            "peerCount":2,
-            "userCount":2
+        {
+            "name": "Soil",
+            "domain": "soil.net",
+            "mspID": "SoilMSP",
+            "SANS": "localhost",
+            "caCountry": "IN",
+            "caProvince": "Delhi-NCR",
+            "caLocality": "Delhi",
+            "caOrganizationalUnit": "IT",
+            "caStreetAddress": "1, M.G ROAD",
+            "caPostalCode": "100001",
+            "peerCount": 2,
+            "userCount": 2
         }
-        ],
-    "consortium":"ElementsConsortium",
-    "channels" :[
-                    {"channelName":"AirWater","orgs":["Air","Water"] },
-                    {"channelName":"All","orgs":["Air","Water","Soil"] }
-                ],
-    "chaincodes":[{"channelName":"AirWater","ccid":"bt","version":"1.0","src":"github.com/bt","participants":["Air","Water"]}]            
-                
+    ],
+    "consortium": "ElementsConsortium",
+    "channels": [
+        {
+            "channelName": "AirWater",
+            "orgs": [
+                "Air",
+                "Water"
+            ]
+        },
+        {
+            "channelName": "All",
+            "orgs": [
+                "Air",
+                "Water",
+                "Soil"
+            ]
+        }
+    ],
+    "chaincodes": [
+        {
+            "channelName": "AirWater",
+            "ccid": "bt",
+            "version": "1.0",
+            "src": "github.com/bt",
+            "participants": [
+                "Air",
+                "Water"
+            ]
+        }
+    ]
 }

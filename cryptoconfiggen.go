@@ -52,6 +52,14 @@ func buildOrderConfig(ordererConfig map[string]interface{}) map[string]interface
 	outputStructure := make(map[string]interface{})
 	outputStructure["Name"] = getString(ordererConfig["name"])
 	outputStructure["Domain"] = getString(ordererConfig["domain"])
+	caSpec := make(map[string]string)
+	caSpec["Country"] = getString(ordererConfig["caCountry"])
+	caSpec["Province"] = getString(ordererConfig["caProvince"])
+	caSpec["Locality"] = getString(ordererConfig["caLocality"])
+	caSpec["OrganizationalUnit"] = getString(ordererConfig["caOrganizationalUnit"])
+	caSpec["StreetAddress"] = getString(ordererConfig["caStreetAddress"])
+	caSpec["PostalCode"] = getString(ordererConfig["caPostalCode"])
+	outputStructure["CA"] = caSpec
 	specs := make([]map[string]interface{}, 0)
 
 	//Assuing one as of now
@@ -71,6 +79,7 @@ func buildOrderConfig(ordererConfig map[string]interface{}) map[string]interface
 			template := make(map[string]interface{})
 			template["Count"] = ordererConfig["haCount"]
 			template["Hostname"] = fmt.Sprintf("%s{{.Index}}", getString(ordererConfig["ordererHostname"]))
+
 			outputStructure["Template"] = template
 		}
 	} else {
@@ -91,6 +100,13 @@ func buildOrgConfig(orgConfig map[string]interface{}, useCA, addNodeOU bool) map
 	if useCA == true {
 		caTemplate := make(map[string]string)
 		caTemplate["Hostname"] = "ca"
+		caTemplate["Country"] = getString(orgConfig["caCountry"])
+		caTemplate["Province"] = getString(orgConfig["caProvince"])
+		caTemplate["Locality"] = getString(orgConfig["caLocality"])
+		caTemplate["OrganizationalUnit"] = getString(orgConfig["caOrganizationalUnit"])
+		caTemplate["StreetAddress"] = getString(orgConfig["caStreetAddress"])
+		caTemplate["PostalCode"] = getString(orgConfig["caPostalCode"])
+
 		outputStructure["CA"] = caTemplate
 	}
 

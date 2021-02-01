@@ -128,6 +128,7 @@ generateDockerComposeFile
 cd $PWD
 {{ range .orgs}}
 {{$caorgName :=.name | ToLower }}
+mkdir ca-{{$caorgName}} 
 touch ca-{{$caorgName}}/fabric-ca-server.db
 {{end}}
 
@@ -271,6 +272,7 @@ const _CLEAR_VOL_SCRIPT = `
 #!/bin/bash
 sudo rm -rf ./worldstate
 sudo rm -rf ./blocks
+sudo rm -rf ./ca-*
 
 `
 
