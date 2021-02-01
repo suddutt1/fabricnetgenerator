@@ -126,6 +126,10 @@ generateArtifacts
 cd $PWD
 generateDockerComposeFile
 cd $PWD
+{{ range .orgs}}
+{{$caorgName :=.name | ToLower }}
+touch ca-{{$caorgName}}/fabric-ca-server.db
+{{end}}
 
 `
 
@@ -521,7 +525,7 @@ func GenerateAffiliationScripts(config []byte, path string) {
 			var outputBytes bytes.Buffer
 			err = tmpl.Execute(&outputBytes, templateData)
 			if err != nil {
-				fmt.Printf("Error in generating the generateArtifacts file %v\n", err)
+				fmt.Printf("Error in generating the generateAffiliation file %v\n", err)
 				return
 			}
 			fileName := fmt.Sprintf("add_affiliation_%s.sh", strings.ToLower(templateData["orgName"]))

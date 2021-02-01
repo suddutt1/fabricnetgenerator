@@ -328,6 +328,7 @@ func BuildCAImage(cryptoBasePath, domainName, orgname string, ports []string, al
 	vols := make([]string, 0)
 	vols = append(vols, cryptoBasePath+"/crypto-config/peerOrganizations/"+domainName+"/ca/"+":/etc/hyperledger/fabric-ca-server-config")
 	vols = append(vols, "./"+":/opt/ws")
+	vols = append(vols, fmt.Sprintf("./ca-%s/fabric-ca-server.db:/etc/hyperledger/fabric-ca-server/fabric-ca-server.db", strings.ToLower(orgname)))
 
 	var networks = make([]string, 0)
 	networks = append(networks, "fabricnetwork")
