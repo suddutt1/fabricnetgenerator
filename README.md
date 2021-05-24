@@ -11,6 +11,7 @@ The future versions of this tool is aimed to support multi-vm , K8S complient an
 
 
 ## Updates 
+#### May 24,2021: Support for 2.2.0 is completed. Tested in battlefield.
 #### Oct 25,2020: Support for 2.2.0 is completed. Testing pending.
 #### Oct 10,2020: Started working to support  2.2.0 with Raft
 #### July 30, 2019: Updated support for 1.4.2 with Raft
