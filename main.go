@@ -7,6 +7,8 @@ import (
 	"os"
 )
 
+var xVersion string
+
 func main() {
 
 	//flag.Usage = toolUsage
@@ -17,6 +19,7 @@ func main() {
 	isJSONOutput := flag.Bool("json", false, "Generate config in json format")
 	genNetconfg := flag.Bool("ncex", false, "Generate an example network-config.json")
 	connProf := flag.Bool("cp", false, "Generate connection profile")
+	version := flag.Bool("v", false, "Version of the tool")
 	flag.Parse()
 	if *genExample {
 		action = "generateExample"
@@ -30,10 +33,16 @@ func main() {
 	if *connProf {
 		action = "gen-connection-profile"
 	}
+	if *version {
+		action = "version"
+	}
 
 	args := flag.Args()
-	fmt.Printf("Starting the application.... \n")
+	fmt.Printf("Starting fabric generator:%s....\n", xVersion)
 	switch action {
+	case "version":
+		fmt.Println("Tool version ", xVersion)
+		os.Exit(0)
 	case "generateNetwork":
 		if len(args) == 0 {
 			flag.Usage()
