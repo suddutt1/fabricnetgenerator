@@ -71,7 +71,7 @@ const _network_config_v1_example = `
         }
         ],
     "extraHosts":{
-        "orderer":"<actual ip address>"
+        "myhost":"127.0.0.1"
     },
     "consortium":"SupplyChainConsortium",
     "channels" :[
